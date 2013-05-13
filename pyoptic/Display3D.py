@@ -21,8 +21,9 @@ class Display3D :
             x,y,z = e.surface()
             #print e.name
             #print z
-            edo = mlab.Surf(x,y,z)
-            edo.trait_set(representation='wireframe')
+            edo = mlab.Surf(x,y,z, color=(.7,.7,.7))
+            #edo.trait_set(representation='wireframe')
+            #edo.use_tubes = False
             self.f.add(edo)
             self.e3d.append(edo)
             
@@ -45,8 +46,9 @@ class Display3D :
                 rbp.append(rb[-1].p1)
                 
             if (len(rbp) > 1):
-                rdo = mlab.Line3(rbp,radius=0.05,representation='wireframe')
+                rdo = mlab.Line3(rbp,radius=0.05, color=r.color)
     #           rdo.representation = 'wireframe'
+                rdo.use_tubes = False
                 self.f.add(rdo)
                 self.e3d.append(rdo)
                 

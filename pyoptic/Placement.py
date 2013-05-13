@@ -5,7 +5,7 @@ class Placement :
 
     def __init__(self, location, orientation) :
         self.location    = pl.array(location)
-        self.orientation = pl.array(orientation)
+        self.orientation = pl.norm(pl.array(orientation))
 
     def __str__(self) :
         s  = 'Placement\n' 
