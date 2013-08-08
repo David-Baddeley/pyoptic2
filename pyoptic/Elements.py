@@ -283,32 +283,43 @@ class ThinLens(Volume) :
         # compute intersection
         self.intersection(inray)                    
         # compute normal
-        #sn = self.surfaceNormal(inray.p1)            
+        sn = self.surfaceNormal(inray.p1)            
         #if self.material.type == Material.mirror :
         #    outray = reflect(inray,sn)
         #elif self.material.type == Material.refract :
         #    outray = snell(inray,sn,previous.material,self.material)  
             
-        r = inray.p1 - self.placement.location
+        #r = inray.p1 - self.placement.location
+        
+        #virtual 'in focus' object'
+        o1 = inray.p1 - inray.d*self.focalLength/pl.dot(inray.d, sn)
+        
+        #output ray will be parallel to the ray from point through origin
+        r = self.placement.location - o1
+        
+        d2 = r/pl.norm(r)
+        
          
-        sn = self.surfaceNormal(inray)
-        mr = pl.norm(r)
-        rhat = r/mr
-        d1x = pl.dot(inray.d, sn)
-        d1y = pl.dot(inray.d, rhat)
-        f = self.focalLength
-        c = pl.sqrt(d1x**2 + d1y**2)
-        mrft = mr/f - d1y/d1x
-        d2y = -pl.sign(mrft)*c/pl.sqrt(1./mrft**2 + 1)
-        d2x = pl.sqrt(c**2 - d2y**2)
-        
-        d2 = inray.d + (d2y-d1y)*rhat + (d2x-d1x)*sn
-        
-        if (mr < 1e-6):
-            #catch rays passing through center
-            d2 = inray.d
-        
-        #print r, inray.p1,sn, rhat, f, mr, inray.d, d2, d1x, d1y, d2x, d2y
+#        sn = self.surfaceNormal(inray)
+#        mr = pl.norm(r)
+#        rhat = r/mr
+#        d1x = pl.dot(inray.d, sn)
+#        d1y = pl.dot(inray.d, rhat)
+#        f = self.focalLength
+#        c = pl.sqrt(d1x**2 + d1y**2)
+#        mrft = mr/f - d1y/d1x
+#        d2y = -pl.sign(mrft)*c/pl.sqrt(1./mrft**2 + 1)
+#        d2x = -pl.sign(mrft)*pl.sqrt(c**2 - d2y**2)
+#        #print d2x, d1x, 
+#        
+#        d2 = inray.d + (d2y-d1y)*rhat + (d2x-d1x)*sn
+#        
+#        if (mr < 1e-6):
+#            #catch rays passing through center
+#            d2 = inray.d
+#        
+        print inray.p1, o1, inray.d, d2
+#        print d1x, d2x, d1y, d2y
         
         outray = Ray(inray.p1,d2, inray.material, inray.wavelength, inray.color)
 

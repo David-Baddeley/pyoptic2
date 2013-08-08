@@ -113,10 +113,10 @@ class PointSource(Volume,list) :
 #        self.append(ryn)
 #        self.append(rxp)
 #        self.append(rxn)
-        for phi in np.linspace(0, 2*np.pi, 8):
+        for phi in np.linspace(0, 2*np.pi, 9):
             self.append(mray(np.arcsin(self.NA), phi))
         
-        for phi in np.linspace(0, 2*np.pi, 8):
+        for phi in np.linspace(0, 2*np.pi, 9):
             self.append(mray(np.arcsin(self.NA)/2, phi))
         
 
