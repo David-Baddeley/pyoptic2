@@ -84,16 +84,17 @@ class PointSource(Volume,list) :
         y2 = y1/pl.sqrt(2)
         z2 = pl.sqrt(1 - y2**2)
         d2 = self.placement.orientation
-        d1 = pl.cross(d2, pl.array([1,0,0]))
+        #d1 = pl.cross(d2, pl.array([1,0,0]))
+        d1 = pl.cross(d2, pl.array([1,1,1])- d2)
         d1 = d1/pl.norm(d1)
         d0 = pl.cross(d1, d2)
         d0 = d0/pl.norm(d0)
         
         def mray(theta, phi):
             r = np.exp(1j*phi)
-            print r.real, r.imag, np.cos(theta)
+            #print r.real, r.imag, np.cos(theta)
             dn = np.sin(theta)*r.real*d0 + np.sin(theta)*r.imag*d1 + np.cos(theta)*d2
-            print pl.norm(dn)
+            #print pl.norm(dn)
             #dn = dn/pl.norm(dn)
             
             return Ray(self.placement.location,dn, self.material, color=self.color)

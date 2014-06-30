@@ -2,9 +2,12 @@ from System import *
 from Elements import *
 from Source import *
 
-from enthought.tvtk.tools import mlab
-#from mayavi import mlab
-from enthought.tvtk.tools import visual
+try:
+    from enthought.tvtk.tools import mlab
+    #from mayavi import mlab
+    from enthought.tvtk.tools import visual
+except ImportError:
+    from tvtk.tools import mlab, visual
 
 class Display3D :
     def __init__(self,s,r) :

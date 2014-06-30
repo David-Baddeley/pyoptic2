@@ -51,7 +51,7 @@ class System(list) :
         raybranch = []
         raybranch.append(r)
         for j in range(1,len(self)) :
-        #print 'System.propagate> element=',j
+            #print 'System.propagate> element=',j
             rp = self[j].propagate(self[j-1],raybranch[j-1])                    
             raybranch.append(rp)
             
