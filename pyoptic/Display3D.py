@@ -2,32 +2,53 @@ from System import *
 from Elements import *
 from Source import *
 
+import numpy as np
+
 try:
-    from enthought.tvtk.tools import mlab
-    #from mayavi import mlab
+    from enthought.tvtk.tools import mlab as ml2
+    from mayavi import mlab
     from enthought.tvtk.tools import visual
+    from enthought.tvtk.api import tvtk
 except ImportError:
-    from tvtk.tools import mlab, visual
+    from tvtk.tools import mlab as ml2
+    from tvtk.tools import visual
+    from tvtk.api import tvtk
+    from mayavi import mlab
 
 class Display3D :
     def __init__(self,s,r) :
         self.s = s
         self.r = r
         self.f = mlab.figure()
+        
+        #if 
 
         self.e3d = []
+        
+    def _drawLine(self, points, color=[1,1,1]):
+        npts = len(points) - 1
+        lines = np.zeros((npts, 2), 'l')
+        lines[:,0] = np.arange(0, npts-0.5, 1, 'l')
+        lines[:,1] = np.arange(1, npts+0.5, 1, 'l')
+        d = tvtk.PolyData(points=points, lines=lines)
+        m = tvtk.PolyDataMapper(input=d)
+        a = tvtk.Actor(mapper=m)
+        a.property.color = color
+        
+        self.f.scene.add_actor(a)
+        return a
 
     def Draw(self) :        
         # loop over optical elements
-        #self.f.scene.disable_render = True
+        self.f.scene.disable_render = True
         for e in self.s :
             x,y,z = e.surface()
             #print e.name
             #print z
-            edo = mlab.Surf(x,y,z, color=(.7,.7,.7))
+            edo = mlab.mesh(x,y,z, color=(.9,1,1), opacity=0.7)
             #edo.trait_set(representation='wireframe')
             #edo.use_tubes = False
-            self.f.add(edo)
+            #self.f.add(edo)
             self.e3d.append(edo)
             
         # loop over rays
@@ -49,13 +70,15 @@ class Display3D :
                 rbp.append(rb[-1].p1)
                 
             if (len(rbp) > 1):
-                rdo = mlab.Line3(rbp,radius=0.05, color=r.color)
+                #print rbp
+                #rdo = ml2.Line3(rbp,radius=0.05, color=r.color)
     #           rdo.representation = 'wireframe'
-                rdo.use_tubes = False
-                self.f.add(rdo)
+                #rdo.use_tubes = False
+                #self.f.scene.add(rdo)
+                rdo = self._drawLine(rbp, color=r.color)
                 self.e3d.append(rdo)
                 
-        #self.f.scene.disable_render = False
+        self.f.scene.disable_render = False
 
 def Display3DTest() :
     s = SystemTest()
