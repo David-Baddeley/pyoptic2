@@ -21,6 +21,7 @@ class Ray :
         self.color = color
 
     def propagate(self, lam) :
+        #print 'lam = ', lam
         return lam*self.d + self.p0
 
     def __str__(self) :

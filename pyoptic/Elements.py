@@ -109,7 +109,7 @@ class PlaneSurface(Volume) :
 
     def intersection(self,inray) :
 #        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
-        lam = pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d)
+        lam = abs(pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d))
         #print 'PlaneSurface.intersection',lam
         inray.p1 = inray.propagate(lam)
                 
@@ -431,7 +431,7 @@ class ThinLens(Volume) :
 
     def intersection(self,inray) :
 #        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
-        lam = pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d)
+        lam = abs(pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d))
         #print 'PlaneSurface.intersection',lam
         inray.p1 = inray.propagate(lam)
     
