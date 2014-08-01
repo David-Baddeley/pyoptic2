@@ -78,6 +78,7 @@ class Display3D :
                 rdo = self._drawLine(rbp, color=r.color)
                 self.e3d.append(rdo)
                 
+        self.f.scene.background = (0.38, 0.4, 0.55)
         self.f.scene.disable_render = False
 
 def Display3DTest() :

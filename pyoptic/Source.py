@@ -78,7 +78,7 @@ class PointSource(Volume,list) :
         
         return [xx,yy,zz]        
     
-    def exampleRays(self,d):
+    def exampleRays(self,d, nph = 9):
         y1 = self.NA
         z1 = pl.sqrt(1 - y1**2)
         y2 = y1/pl.sqrt(2)
@@ -97,7 +97,7 @@ class PointSource(Volume,list) :
             #print pl.norm(dn)
             #dn = dn/pl.norm(dn)
             
-            return Ray(self.placement.location,dn, self.material, color=self.color)
+            return Ray(self.placement.location,dn, self.material, color=self.color, wavelength=self.wavelength)
         
             
         r0  = Ray(self.placement.location,d2, self.material, color=self.color, wavelength=self.wavelength)
@@ -114,10 +114,10 @@ class PointSource(Volume,list) :
 #        self.append(ryn)
 #        self.append(rxp)
 #        self.append(rxn)
-        for phi in np.linspace(0, 2*np.pi, 9):
+        for phi in np.linspace(0, 2*np.pi, nph):
             self.append(mray(np.arcsin(self.NA), phi))
         
-        for phi in np.linspace(0, 2*np.pi, 9):
+        for phi in np.linspace(0, 2*np.pi, nph):
             self.append(mray(np.arcsin(self.NA)/2, phi))
         
 
