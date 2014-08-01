@@ -24,4 +24,4 @@ Pyoptic requires a number of dependencies:
 A python distribution such as Enthought Canopy, WinPython, Python(x,y), or Anaconda ought to provide all of these.
 
 After downloading and installing python & dependencies, pyoptic can be installed by executing:
-python setup.py install in the pyoptic base directory.
+`python setup.py install` in the pyoptic base directory.
