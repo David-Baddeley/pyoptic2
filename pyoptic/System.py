@@ -52,7 +52,9 @@ class System(list) :
         raybranch.append(r)
         for j in range(1,len(self)) :
             #print 'System.propagate> element=',j
-            rp = self[j].propagate(self[j-1],raybranch[j-1])                    
+            rp = self[j].propagate(self[j-1],raybranch[j-1]) 
+            if rp == None:
+                break                   
             raybranch.append(rp)
             
         return raybranch

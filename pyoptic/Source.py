@@ -78,7 +78,7 @@ class PointSource(Volume,list) :
         
         return [xx,yy,zz]        
     
-    def exampleRays(self,d, nph = 9):
+    def exampleRays(self,d, nph = 9, nth=2, jit=True):
         y1 = self.NA
         z1 = pl.sqrt(1 - y1**2)
         y2 = y1/pl.sqrt(2)
@@ -114,11 +114,17 @@ class PointSource(Volume,list) :
 #        self.append(ryn)
 #        self.append(rxp)
 #        self.append(rxn)
-        for phi in np.linspace(0, 2*np.pi, nph):
-            self.append(mray(np.arcsin(self.NA), phi))
+        for th in np.linspace(0, 1, nth)[1:]:
+            for phi in (np.linspace(0, 2*np.pi, np.maximum(nph*th, 3))[:-1] + 3*np.pi/4):
+                if jit:
+                    phi = phi + (np.random.rand(1) - .5)*2*np.pi/(nph*th)
+                    thm  = th + (np.random.rand(1) - .5)/nth
+                else:
+                    thm = th
+                self.append(mray(np.arcsin(self.NA)*thm, phi))
         
-        for phi in np.linspace(0, 2*np.pi, nph):
-            self.append(mray(np.arcsin(self.NA)/2, phi))
+        #for phi in np.linspace(0, 2*np.pi, nph):
+        #    self.append(mray(np.arcsin(self.NA)/2, phi))
         
 
 def SourceTest() :
