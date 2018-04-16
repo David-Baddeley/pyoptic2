@@ -1,7 +1,7 @@
 import pylab as py
 
 from Placement import *
-from Source    import *
+from  Source import *
 from Material  import *
 from Elements  import *
 from Display3D import *
@@ -21,14 +21,22 @@ class System(list) :
     def checkSystem(self) :
         print "System:checkSystem>"
         
-    def propagate(self) :
+    def propagate(self, source=None) :
         print "System:rayTracing>"
 
-        raytree = []        
+        raytree = []
+        
+        if source is None:
+            source = self[0]
+            
+        if isinstance(self[0],Source):
+            startAt = 1
+        else:
+            startAt = 0
 
         # iterate over rays from source
         i = 0 
-        ri = iter(self[0])
+        ri = iter(source)
         try :                
             while True :
                 r = ri.next()       
@@ -39,7 +47,7 @@ class System(list) :
 #                    #print 'System.propagate> element=',j
 #                    rp = self[j].propagate(self[j-1],raybranch[j-1])                    
 #                    raybranch.append(rp)
-                raybranch = self.propagateRay(r)
+                raybranch = self.propagateRay(r, startAt=startAt, source=source)
                 raytree.append(raybranch)
                 i += 1
         except StopIteration :
@@ -47,12 +55,16 @@ class System(list) :
 
         return raytree
         
-    def propagateRay(self, r):
+    def propagateRay(self, r, startAt=1, source=None):
         raybranch = []
         raybranch.append(r)
-        for j in range(1,len(self)) :
+        for j in range(startAt,len(self)) :
             #print 'System.propagate> element=',j
-            rp = self[j].propagate(self[j-1],raybranch[j-1]) 
+            if j == 0:
+                rp = self[j].propagate(source, raybranch[j-startAt])
+            else:
+                rp = self[j].propagate(self[j-1],raybranch[j-startAt])
+                
             if rp == None:
                 break                   
             raybranch.append(rp)

@@ -1,6 +1,6 @@
 from System import *
 from Elements import *
-from Source import *
+#from Source import *
 
 import numpy as np
 
@@ -9,10 +9,12 @@ try:
     from mayavi import mlab
     from enthought.tvtk.tools import visual
     from enthought.tvtk.api import tvtk
+    from enthought.tvtk.common import configure_input_data
 except ImportError:
     from tvtk.tools import mlab as ml2
     from tvtk.tools import visual
     from tvtk.api import tvtk
+    from tvtk.common import configure_input_data
     from mayavi import mlab
 
 class Display3D :
@@ -31,7 +33,8 @@ class Display3D :
         lines[:,0] = np.arange(0, npts-0.5, 1, 'l')
         lines[:,1] = np.arange(1, npts+0.5, 1, 'l')
         d = tvtk.PolyData(points=points, lines=lines)
-        m = tvtk.PolyDataMapper(input=d)
+        m = tvtk.PolyDataMapper()
+        configure_input_data(m, d)
         a = tvtk.Actor(mapper=m)
         a.property.color = color
         

@@ -54,7 +54,7 @@ class Source(Volume,list) :
 #        self.append(rxpp)
 #        self.append(rxnp)
 
-class PointSource(Volume,list) :
+class PointSource(Source) :
     def __init__(self,name,placement, NA=1.49/1.51, color=(1.0, 0, 0), wavelength=635.) :
         print 'Source.__init__'
         self.name = name
@@ -125,6 +125,55 @@ class PointSource(Volume,list) :
         
         #for phi in np.linspace(0, 2*np.pi, nph):
         #    self.append(mray(np.arcsin(self.NA)/2, phi))
+
+
+class FanSource(PointSource):
+    def exampleRays(self, d, phi=0, nth=2, jit=True):
+        y1 = self.NA
+        z1 = pl.sqrt(1 - y1 ** 2)
+        y2 = y1 / pl.sqrt(2)
+        z2 = pl.sqrt(1 - y2 ** 2)
+        d2 = self.placement.orientation
+        #d1 = pl.cross(d2, pl.array([1,0,0]))
+        d1 = pl.cross(d2, pl.array([1, 1, 1]) - d2)
+        d1 = d1 / pl.norm(d1)
+        d0 = pl.cross(d1, d2)
+        d0 = d0 / pl.norm(d0)
+        
+        def mray(theta, phi):
+            r = np.exp(1j * phi)
+            #print r.real, r.imag, np.cos(theta)
+            dn = np.sin(theta) * r.real * d0 + np.sin(theta) * r.imag * d1 + np.cos(theta) * d2
+            #print pl.norm(dn)
+            #dn = dn/pl.norm(dn)
+            
+            return Ray(self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
+        
+        r0 = Ray(self.placement.location, d2, self.material, color=self.color, wavelength=self.wavelength)
+        #        ryp = Ray(self.placement.location,y1*d1 + z1*d2, self.material, color=self.color)
+        #        rypp = Ray(self.placement.location,y2*d1 + z2*d2, self.material, color=self.color)
+        #        ryn = Ray(self.placement.location,-y1*d1 + z1*d2, self.material, color=self.color)
+        #        rynn = Ray(self.placement.location,-y2*d1 + z2*d2, self.material, color=self.color)
+        #        rxp = Ray(self.placement.location,y1*d0 + z1*d2, self.material, color=self.color)
+        #        rxn = Ray(self.placement.location,-y1*d0 + z1*d2, self.material, color=self.color)
+        self.append(r0)
+        #        self.append(ryp)
+        #        self.append(rypp)
+        #        self.append(rynn)
+        #        self.append(ryn)
+        #        self.append(rxp)
+        #        self.append(rxn)
+        for th in np.linspace(-1, 1, nth):
+            #for phi in (np.linspace(0, 2 * np.pi, np.maximum(nph * th, 3))[:-1] + 3 * np.pi / 4):
+            if jit:
+                phi = phi + (np.random.rand(1) - .5) * 2 * np.pi / (nph * th)
+                thm = th + (np.random.rand(1) - .5) / nth
+            else:
+                thm = th
+            self.append(mray(np.arcsin(self.NA) * thm, phi))
+            
+            #for phi in np.linspace(0, 2*np.pi, nph):
+            #    self.append(mray(np.arcsin(self.NA)/2, phi))
         
 
 def SourceTest() :
