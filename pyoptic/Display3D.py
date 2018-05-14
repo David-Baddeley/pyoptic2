@@ -17,11 +17,53 @@ except ImportError:
     from tvtk.common import configure_input_data
     from mayavi import mlab
 
+
+class STLPart(object):
+    def __init__(self, filename, colour=None, position=[0, 0, 0], orientation=[0, 0, 0]):
+        self.filename = filename
+        self.reader = tvtk.STLReader(file_name=filename)
+        self.mapper = tvtk.PolyDataMapper()
+        configure_input_data(self.mapper, self.reader.output)
+        self.reader.update()
+        self.actor = tvtk.Actor(mapper=self.mapper)
+        
+        if colour:
+            self.actor.property.color = colour
+        
+        self.actor.position = position
+        self.actor.orientation = orientation
+    
+    def as_scad(self, origin=[0, 0, 0]):
+        trans = '[%f, %f, %f]' % tuple(np.array(self.actor.position) - np.array(origin))
+        rot = '[%f,%f,%f]' % tuple(self.actor.orientation)
+        return 'translate(%s)rotate(%s)import("%s");\n' % (trans, rot, self.filename)
+    
+    def add_to_scene(self, scene):
+        scene.add_actor(self.actor)
+    
+    @property
+    def position(self):
+        return self.actor.postion
+    
+    @position.setter
+    def set_pos(self, value):
+        self.actor.position = value
+    
+    @property
+    def orientation(self):
+        return self.actor.orientation
+    
+    @orientation.setter
+    def set_or(self, value):
+        self.actor.orientation = value
+
 class Display3D :
-    def __init__(self,s,r) :
+    def __init__(self,s,r, stl_parts=[]):
         self.s = s
         self.r = r
         self.f = mlab.figure()
+        
+        self.stl_parts = stl_parts
         
         #if 
 
@@ -80,6 +122,9 @@ class Display3D :
                 #self.f.scene.add(rdo)
                 rdo = self._drawLine(rbp, color=r.color)
                 self.e3d.append(rdo)
+                
+        for p in self.stl_parts:
+            p.add_to_scene(self.f.scene)
                 
         self.f.scene.background = (0.38, 0.4, 0.55)
         self.f.scene.disable_render = False

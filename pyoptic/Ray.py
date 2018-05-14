@@ -24,6 +24,8 @@ class Ray :
 
     def propagate(self, lam) :
         #print 'lam = ', lam
+        if lam is None:
+            return None
         return lam*self.d + self.p0
 
     def __str__(self) :

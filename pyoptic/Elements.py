@@ -28,6 +28,75 @@ class Volume() :
         s += 'Volume.placement         : \n'+str(self.placement)
         s += 'Volume.material          : \n'+str(self.material)
         return s
+    
+    def _surface_coordinates(self, proj=None):
+        if proj in  ['x', 'y', 'z']:
+            xx = np.linspace(-self.dimension[0], self.dimension[0])[:,None]
+            yy = 0 * xx
+        #elif proj == 'y':
+        #    yy = np.linspace(-self.dimension[0], self.dimension[0])
+        #    xx = 0 * yy
+        elif self.shape == self.rect:
+            x = pl.arange(-self.dimension[0], self.dimension[0] + 1e-8, self.dimension[0] / 5)
+            y = pl.arange(-self.dimension[1], self.dimension[1] + 1e-8, self.dimension[1] / 5)
+            xx, yy = pl.meshgrid(x, y)
+        else:
+            r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, 1))
+            t = 2 * pl.pi * pl.arange(0, 1.01, .1)
+        
+            rr, tt = pl.meshgrid(r, t)
+            pol = rr * pl.exp(1j * tt)
+            xx = pol.real
+            yy = pol.imag
+            
+        return xx, yy
+    
+    def _orientate_surface(self, xx, yy, zz, proj=None):
+        #if np.argmax(np.abs(self.placement.orientation)) == 2:
+            #we are mostly orientated along z
+            #if proj == 'x':
+            #    N = np.array([1,0,0])
+            #else:
+            #    N = np.array([1., 0, 0])
+            #print 'oriented along z'
+        #else:
+        #    N = pl.array([0, 0, 1.])
+        
+        if proj == 'z':
+            N = np.array([0,0,1])
+        elif proj == 'y':
+            N = np.array([0,1,0])
+        elif proj == 'x':
+            N = np.array([1,0,0])
+        else:
+            N = np.array([0,0,1])
+            
+            
+        ax = pl.cross(N, self.placement.orientation)
+        ax = ax / pl.norm(ax)
+        
+        N2 = pl.cross(self.placement.orientation, ax)
+        N2 = N2/pl.norm(N2)
+        
+        #ang = pl.arccos(pl.dot(N, self.placement.orientation))
+    
+        #ct = pl.cos(ang)
+        #st = pl.sin(ang)
+    
+        #print ax, ang
+        
+        coords = self.placement.orientation[:,None,None]*zz[None,:, :] + ax[:,None,None]*xx[None,:,:] + N2[:,None, None]*yy[None,:,:]
+        return coords + self.placement.location[:,None, None]
+    
+        # xn = (ct + ax[0] ** 2 * (1 - ct)) * xx + (ax[0] * ax[1] * (1 - ct) - ax[2] * st) * yy + (ax[0] * ax[2] * (
+        # 1 - ct) + ax[1] * st) * zz
+        # yn = (ax[0] * ax[1] * (1 - ct) + ax[2] * st) * xx + (ct + ax[1] ** 2 * (1 - ct)) * yy + (ax[1] * ax[2] * (
+        # 1 - ct) + ax[0] * st) * zz
+        # zn = (ax[0] * ax[2] * (1 - ct) - ax[1] * st) * xx + (ax[2] * ax[1] * (1 - ct) + ax[0] * st) * yy + (ct + ax[
+        #     2] ** 2 * (1 - ct)) * zz
+        #
+        # return [xn + self.placement.location[0], yn + self.placement.location[1], zn + self.placement.location[2]]
+        
 
 ############################################################################
 # General optical surface
@@ -42,7 +111,13 @@ class OpticalSurface(Volume) :
         # compute normal
         sn = self.surfaceNormal(inray.p1)            
         # compute out going ray
-        outray = snell(inray,sn,previous.material,self.material)
+        
+        if self.material.type == Material.mirror :
+            outray = reflect(inray,sn)
+        elif self.material.type == Material.refract :
+            outray = snell(inray,sn,inray.material,self.material)
+
+        return outray
         
     def intersection(self,inray) :
         pass
@@ -56,58 +131,29 @@ class PlaneSurface(Volume) :
     def __init__(self,name,shape,dimension,placement,material) :
         Volume.__init__(self,name,shape,dimension,placement,material)
 
-    def surface(self) :
-#        x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-#        y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-#        xx,yy = pl.meshgrid(x,y)
-#        zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-#        
-#        return [xx + self.placement.location[0],yy+ self.placement.location[1],zz]  
-        
-        if self.shape == self.rect:
-            x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-            y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-            xx,yy = pl.meshgrid(x,y)
-        else:
-            r = self.dimension[0]*pl.sqrt(pl.arange(0, 1.01,1))
-            t =  2*pl.pi*pl.arange(0, 1.01,.1)
-            
-            rr, tt = pl.meshgrid(r,t)
-            pol = rr*pl.exp(1j*tt)
-            xx = pol.real
-            yy = pol.imag
+    def surface(self, proj=None) :
+        xx, yy = self._surface_coordinates(proj)
             
         zz = pl.zeros_like(xx)
         
-        N = pl.array([0,0,1.])         
-        ax = pl.cross(N, self.placement.orientation)
-        ax = ax/pl.norm(ax)
-        ang = pl.arccos(pl.dot(N, self.placement.orientation))
+        return self._orientate_surface(xx, yy, zz, proj)
         
-        ct = pl.cos(ang)
-        st = pl.sin(ang)
+        # N = pl.array([0,0,1.])
+        # ax = pl.cross(N, self.placement.orientation)
+        # ax = ax/pl.norm(ax)
+        # ang = pl.arccos(pl.dot(N, self.placement.orientation))
+        #
+        # ct = pl.cos(ang)
+        # st = pl.sin(ang)
+        #
+        # #print ax, ang
+        #
+        # xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
+        # yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
+        # zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
+        #
+        # return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]
         
-        #print ax, ang
-        
-        xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
-        yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
-        zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
-        
-        return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]
-        
-    def propagate(self,previous,inray) :        
-        
-        # compute intersection
-        self.intersection(inray)                    
-        # compute normal
-        sn = self.surfaceNormal(inray.p1)            
-        
-        if self.material.type == Material.mirror :
-            outray = reflect(inray,sn)
-        elif self.material.type == Material.refract :
-            outray = snell(inray,sn,previous.material,self.material)            
-
-        return outray
 
     def intersection(self,inray) :
 #        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
@@ -132,19 +178,8 @@ class SphericalSurface(Volume) :
         Volume.__init__(self,name,shape,dimension,placement,material)
         self.radcurv   = radcurv
 
-    def surface(self) :
-        if self.shape == self.rect:
-            x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-            y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-            xx,yy = pl.meshgrid(x,y)
-        else:
-            r = self.dimension[0]*pl.sqrt(pl.arange(0, 1.01,.2))
-            t =  2*pl.pi*pl.arange(0, 1.01,.1)
-            
-            rr, tt = pl.meshgrid(r,t)
-            pol = rr*pl.exp(1j*tt)
-            xx = pol.real
-            yy = pol.imag
+    def surface(self, proj=None) :
+        xx, yy = self._surface_coordinates(proj)
         #cv = self.placement.location+self.placement.orientation*self.radcurv
         cv = self.placement.orientation*self.radcurv        
         #zz = -pl.sign(self.radcurv)*pl.sqrt(self.radcurv**2-(xx-cv[0])**2-(yy-cv[1])**2)+cv[2]
@@ -153,22 +188,7 @@ class SphericalSurface(Volume) :
         
         #return [xx,yy,zz]
         
-        N = pl.array([0,0,1.])         
-        ax = pl.cross(N, self.placement.orientation)
-        ang = pl.arccos(pl.dot(N, self.placement.orientation))
-        
-        ct = pl.cos(ang)
-        st = pl.sin(ang)
-        
-        #print ax, ang
-        
-        xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
-        yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
-        zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
-
-        #print xn, yn, zn
-        
-        return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]   
+        return self._orientate_surface(xx, yy, zz, proj)
 
     def propagate(self,previous,inray) :
         outrays = []
@@ -180,7 +200,7 @@ class SphericalSurface(Volume) :
         if self.material.type == Material.mirror :
             outray = reflect(inray,sn)
         elif self.material.type == Material.refract :
-            outray = snell(inray,sn,previous.material,self.material)            
+            outray = snell(inray,sn,inray.material,self.material)
 
         # compute out going ray
 
@@ -247,40 +267,14 @@ class CylindricalSurface(Volume) :
         self.radcurv   = radcurv
         self.axiscurve = np.array(axiscurve)
 
-    def surface(self) :
-        if self.shape == self.rect:
-            x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-            y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-            xx,yy = pl.meshgrid(x,y)
-        else:
-            r = self.dimension[0]*pl.sqrt(pl.arange(0, 1.01,.2))
-            t =  2*pl.pi*pl.arange(0, 1.01,.1)
-            
-            rr, tt = pl.meshgrid(r,t)
-            pol = rr*pl.exp(1j*tt)
-            xx = pol.real
-            yy = pol.imag
+    def surface(self, proj=None) :
+        xx, yy = self._surface_coordinates(proj)
         #cv = self.placement.location+self.placement.orientation*self.radcurv
         cv = self.placement.orientation*self.radcurv        
         #zz = -pl.sign(self.radcurv)*pl.sqrt(self.radcurv**2-(xx-cv[0])**2-(yy-cv[1])**2)+cv[2]
         zz = -(-pl.sign(self.radcurv)*pl.sqrt(self.radcurv**2-xx**2-yy**2) +self.radcurv)
         
-        #return [xx,yy,zz]
-        
-        N = pl.array([0,0,1.])         
-        ax = pl.cross(N, self.placement.orientation)
-        ang = pl.arccos(pl.dot(N, self.placement.orientation))
-        
-        ct = pl.cos(ang)
-        st = pl.sin(ang)
-        
-        print ax, ang
-        
-        xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
-        yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
-        zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
-        
-        return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]   
+        return self._orientate_surface(xx, yy, zz, proj)
 
     def propagate(self,previous,inray) :
         outrays = []
@@ -292,7 +286,7 @@ class CylindricalSurface(Volume) :
         if self.material.type == Material.mirror :
             outray = reflect(inray,sn)
         elif self.material.type == Material.refract :
-            outray = snell(inray,sn,previous.material,self.material)            
+            outray = snell(inray,sn,inray.material,self.material)
 
         # compute out going ray
 
@@ -361,27 +355,12 @@ class ThinLens(Volume) :
         Volume.__init__(self,name,shape,dimension,placement,material)
         self.focalLength   = focalLength
         
-    def surface(self) :
-        x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-        y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-        xx,yy = pl.meshgrid(x,y)
+    def surface(self, proj=None):
+        xx, yy = self._surface_coordinates(proj)
         #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.ones_like(xx)
+        zz = pl.zeros_like(xx)
         
-        N = pl.array([0,0,1.])         
-        ax = pl.cross(N, self.placement.orientation)
-        ang = pl.arccos(pl.dot(N, self.placement.orientation))
-        
-        ct = pl.cos(ang)
-        st = pl.sin(ang)
-        
-        #print ax, ang
-        
-        xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
-        yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
-        zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
-        
-        return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]   
+        return self._orientate_surface(xx, yy, zz, proj)
 
     def propagate(self,previous,inray) :
         outrays = []
@@ -452,27 +431,12 @@ class ThinLensH(Volume) :
         self.focalLength   = focalLength
         self.focalPoint = focalLength*placement.orientation + placement.location
         
-    def surface(self) :
-        x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-        y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-        xx,yy = pl.meshgrid(x,y)
+    def surface(self, proj=None):
+        xx, yy = self._surface_coordinates(proj)
         #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.ones_like(xx)
-        
-        N = pl.array([0,0,1.])         
-        ax = pl.cross(N, self.placement.orientation)
-        ang = pl.arccos(pl.dot(N, self.placement.orientation))
-        
-        ct = pl.cos(ang)
-        st = pl.sin(ang)
-        
-        #print ax, ang
-        
-        xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
-        yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
-        zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
-        
-        return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]   
+        zz = pl.zeros_like(xx)
+    
+        return self._orientate_surface(xx, yy, zz, proj)
 
     def propagate(self,previous,inray) :
         outrays = []
@@ -568,27 +532,12 @@ class Aperture(Volume) :
         Volume.__init__(self,name,shape,dimension,placement,material)
         self.radius = radius
         
-    def surface(self) :
-        x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-        y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-        xx,yy = pl.meshgrid(x,y)
+    def surface(self, proj=None) :
+        xx, yy, zz = self._surface_coordinates(proj)
         #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.ones_like(xx)
-        
-        N = pl.array([0,0,1.])         
-        ax = pl.cross(N, self.placement.orientation)
-        ang = pl.arccos(pl.dot(N, self.placement.orientation))
-        
-        ct = pl.cos(ang)
-        st = pl.sin(ang)
-        
-        #print ax, ang
-        
-        xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
-        yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
-        zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
-        
-        return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]   
+        zz = pl.zeros_like(xx)
+    
+        return self._orientate_surface(xx, yy, zz, proj)
 
     def propagate(self,previous,inray) :
         outrays = []
@@ -624,27 +573,12 @@ class AtAperture(Volume) :
         Volume.__init__(self,name,shape,dimension,placement,material)
         self.radius = radius
         
-    def surface(self) :
-        x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-        y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-        xx,yy = pl.meshgrid(x,y)
+    def surface(self, proj=None) :
+        xx, yy, zz = self._surface_coordinates(proj)
         #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.ones_like(xx)
-        
-        N = pl.array([0,0,1.])         
-        ax = pl.cross(N, self.placement.orientation)
-        ang = pl.arccos(pl.dot(N, self.placement.orientation))
-        
-        ct = pl.cos(ang)
-        st = pl.sin(ang)
-        
-        #print ax, ang
-        
-        xn = (ct + ax[0]**2*(1-ct))*xx           + (ax[0]*ax[1]*(1-ct) - ax[2]*st)*yy + (ax[0]*ax[2]*(1-ct) + ax[1]*st)*zz
-        yn = (ax[0]*ax[1]*(1-ct) + ax[2]*st)*xx + (ct + ax[1]**2*(1-ct))*yy           + (ax[1]*ax[2]*(1-ct) + ax[0]*st)*zz
-        zn = (ax[0]*ax[2]*(1-ct) - ax[1]*st)*xx + (ax[2]*ax[1]*(1-ct) + ax[0]*st)*yy + (ct + ax[2]**2*(1-ct))*zz
-        
-        return [xn+self.placement.location[0],yn+self.placement.location[1],zn+self.placement.location[2]]   
+        zz = pl.zeros_like(xx)
+    
+        return self._orientate_surface(xx, yy, zz, proj)
 
     def propagate(self,previous,inray) :
         outrays = []

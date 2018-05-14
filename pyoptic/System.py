@@ -52,6 +52,7 @@ class System(list) :
                 i += 1
         except StopIteration :
             pass
+            
 
         return raytree
         
