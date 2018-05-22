@@ -4,7 +4,7 @@ from Placement import *
 from  Source import *
 from Material  import *
 from Elements  import *
-from Display3D import *
+#from Display3D import *
 
 # Complete optical system
 class System(list) : 
@@ -22,7 +22,7 @@ class System(list) :
         print "System:checkSystem>"
         
     def propagate(self, source=None) :
-        print "System:rayTracing>"
+        #print "System:rayTracing>"
 
         raytree = []
         

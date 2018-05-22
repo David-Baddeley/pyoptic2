@@ -127,7 +127,7 @@ class OpticalSurface(Volume) :
 ############################################################################
 # Plane surface
 ############################################################################            
-class PlaneSurface(Volume) :
+class PlaneSurface(OpticalSurface) :
     def __init__(self,name,shape,dimension,placement,material) :
         Volume.__init__(self,name,shape,dimension,placement,material)
 
@@ -157,7 +157,7 @@ class PlaneSurface(Volume) :
 
     def intersection(self,inray) :
 #        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
-        lam = abs(pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d))
+        lam = abs(((self.placement.location-inray.p0)*(self.placement.orientation)).sum(-1)/(inray.d* self.placement.orientation).sum(-1))
         #print 'PlaneSurface.intersection',lam
         inray.p1 = inray.propagate(lam)
                 
@@ -173,7 +173,7 @@ class PlaneSurface(Volume) :
 ############################################################################
 # SphericalSurface
 ############################################################################            
-class SphericalSurface(Volume) :
+class SphericalSurface(OpticalSurface) :
     def __init__(self,name,shape,dimension,placement,material,radcurv) :
         Volume.__init__(self,name,shape,dimension,placement,material)
         self.radcurv   = radcurv
@@ -190,46 +190,36 @@ class SphericalSurface(Volume) :
         
         return self._orientate_surface(xx, yy, zz, proj)
 
-    def propagate(self,previous,inray) :
-        outrays = []
-        
-        # compute intersection
-        self.intersection(inray)                    
-        # compute normal
-        sn = self.surfaceNormal(inray.p1)            
-        if self.material.type == Material.mirror :
-            outray = reflect(inray,sn)
-        elif self.material.type == Material.refract :
-            outray = snell(inray,sn,inray.material,self.material)
-
-        # compute out going ray
-
-
-        return outray
-
     def intersection(self,ray) :
         cv = self.placement.location+self.placement.orientation*self.radcurv
-        dv = ray.p0 - self.placement.orientation*self.radcurv - self.placement.location        
+        dv = ray.p0 - self.placement.orientation*self.radcurv - self.placement.location
+        #print dv.shape, ray.d.shape
         a = 1
-        b = 2*pl.linalg.dot(ray.d,dv)
-        c = pl.linalg.dot(dv,dv)-self.radcurv**2
+        b = 2*(ray.d*dv).sum(-1)
+        c = (dv*dv).sum(-1)-self.radcurv**2
+        
+        #print c
         
         qs  = b**2-4*a*c
-        if qs == 0 :
-            lam = -b/(2*a)
-        elif qs < 0 :
-            lam = None
-        else :
-            lamp = (-b+pl.sqrt(b**2-4*a*c))/(2*a)
-            lamn = (-b-pl.sqrt(b**2-4*a*c))/(2*a)
-            #pd   = pl.linalg.norm(ray.propagate(lamp)-ray.p0)
-            #nd   = pl.linalg.norm(ray.propagate(lamn)-ray.p0)
-#            lam = min(lamp,lamn)
+        # if qs == 0 :
+        #     lam = -b/(2*a)
+        # elif qs < 0 :
+        #     lam = None
+        # else :
             
-            if self.radcurv > 0 :
-                lam = min(lamp,lamn)
-            elif self.radcurv < 0 :
-                lam = max(lamp,lamn)
+        qsc = np.maximum(qs, 0)
+        lamp = (-b+np.sqrt(qsc))/(2*a)
+        lamn = (-b-np.sqrt(qsc))/(2*a)
+        #pd   = pl.linalg.norm(ray.propagate(lamp)-ray.p0)
+        #nd   = pl.linalg.norm(ray.propagate(lamn)-ray.p0)
+#            lam = min(lamp,lamn)
+        
+        if self.radcurv > 0 :
+            lam = np.minimum(lamp,lamn)
+        elif self.radcurv < 0 :
+            lam = np.maximum(lamp,lamn)
+            
+        lam = lam*(qs >= 0)
             
             # assign intersection
         ray.p1 = ray.propagate(lam)
@@ -239,7 +229,7 @@ class SphericalSurface(Volume) :
 #        sn = p1-cv
 #        sn = -sn/pl.linalg.norm(sn)
         sn = pl.sign(self.radcurv)*(cv-p1)
-        sn = sn/pl.linalg.norm(sn)
+        sn = sn/pl.linalg.norm(sn, axis=-1, keepdims=True)
         return sn
 
     def __str__(self) :
@@ -261,7 +251,7 @@ class ParabolicSurface(Volume) :
 ############################################################################
 # Cylindrical surface
 ############################################################################                
-class CylindricalSurface(Volume) :
+class CylindricalSurface(OpticalSurface) :
     def __init__(self,name,shape,dimension,placement,material,radcurv, axiscurve) :
         Volume.__init__(self,name,shape,dimension,placement,material)
         self.radcurv   = radcurv
@@ -276,48 +266,37 @@ class CylindricalSurface(Volume) :
         
         return self._orientate_surface(xx, yy, zz, proj)
 
-    def propagate(self,previous,inray) :
-        outrays = []
-        
-        # compute intersection
-        self.intersection(inray)                    
-        # compute normal
-        sn = self.surfaceNormal(inray.p1)            
-        if self.material.type == Material.mirror :
-            outray = reflect(inray,sn)
-        elif self.material.type == Material.refract :
-            outray = snell(inray,sn,inray.material,self.material)
-
-        # compute out going ray
-
-
-        return outray
 
     def intersection(self,ray) :
         #cv = self.placement.location+self.placement.orientation*self.radcurv
         dv = ray.p0 - self.placement.orientation*self.radcurv - self.placement.location
-        dv_ = dv - self.axiscurve*np.dot(dv, self.axiscurve)
-        d_ = ray.d - self.axiscurve*np.dot(ray.d, self.axiscurve)
+        #print dv.shape, self.axiscurve.shape
+        dv_ = dv - (dv*self.axiscurve).sum(-1)[:,None]*self.axiscurve
+        d_ = ray.d - (ray.d*self.axiscurve).sum(-1)[:,None]*self.axiscurve
         a = 1
-        b = 2*pl.linalg.dot(d_,dv_)
-        c = pl.linalg.dot(dv_,dv_)-self.radcurv**2
-        
-        qs  = b**2-4*a*c
-        if qs == 0 :
-            lam = -b/(2*a)
-        elif qs < 0 :
-            lam = None
-        else :
-            lamp = (-b+pl.sqrt(b**2-4*a*c))/(2*a)
-            lamn = (-b-pl.sqrt(b**2-4*a*c))/(2*a)
-            #pd   = pl.linalg.norm(ray.propagate(lamp)-ray.p0)
-            #nd   = pl.linalg.norm(ray.propagate(lamn)-ray.p0)
-#            lam = min(lamp,lamn)
-            
-            if self.radcurv > 0 :
-                lam = min(lamp,lamn)
-            elif self.radcurv < 0 :
-                lam = max(lamp,lamn)
+        b = 2*(d_*dv_).sum(-1)
+        c = (dv_*dv_).sum(-1)-self.radcurv**2
+
+        qs = b ** 2 - 4 * a * c
+        # if qs == 0 :
+        #     lam = -b/(2*a)
+        # elif qs < 0 :
+        #     lam = None
+        # else :
+
+        qsc = np.maximum(qs, 0)
+        lamp = (-b + np.sqrt(qsc)) / (2 * a)
+        lamn = (-b - np.sqrt(qsc)) / (2 * a)
+        #pd   = pl.linalg.norm(ray.propagate(lamp)-ray.p0)
+        #nd   = pl.linalg.norm(ray.propagate(lamn)-ray.p0)
+        #            lam = min(lamp,lamn)
+
+        if self.radcurv > 0:
+            lam = np.minimum(lamp, lamn)
+        elif self.radcurv < 0:
+            lam = np.maximum(lamp, lamn)
+
+        lam = lam * (qs >= 0)
             
             # assign intersection
         ray.p1 = ray.propagate(lam)
@@ -327,8 +306,8 @@ class CylindricalSurface(Volume) :
 #        sn = p1-cv
 #        sn = -sn/pl.linalg.norm(sn)
         sn = pl.sign(self.radcurv)*(cv-p1)
-        sn = sn - pl.dot(sn, self.axiscurve)*self.axiscurve
-        sn = sn/pl.linalg.norm(sn)
+        sn = sn - (sn*self.axiscurve).sum(-1)[:,None]*self.axiscurve
+        sn = sn/pl.linalg.norm(sn, axis=-1, keepdims=True)
         return sn
 
 ############################################################################
@@ -377,7 +356,7 @@ class ThinLens(Volume) :
         #r = inray.p1 - self.placement.location
         
         #virtual 'in focus' object'
-        o1 = inray.p1 - inray.d*self.focalLength/pl.dot(inray.d, sn)
+        o1 = inray.p1 - inray.d*self.focalLength/(inray.d*sn).sum(-1)
         
         #output ray will be parallel to the ray from point through origin
         r = self.placement.location - o1
@@ -406,7 +385,7 @@ class ThinLens(Volume) :
         #print inray.p1, o1, inray.d, d2
 #        print d1x, d2x, d1y, d2y
         
-        outray = Ray(inray.p1,d2, inray.material, inray.wavelength, inray.color, cumulativePath=inray.prev_pathlength)
+        outray = RayBundle(inray.p1, d2, inray.material, inray.wavelength, inray.color, cumulativePath=inray.prev_pathlength)
 
         # compute out going ray
 
@@ -415,7 +394,7 @@ class ThinLens(Volume) :
 
     def intersection(self,inray) :
 #        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
-        lam = abs(pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d))
+        lam = abs(((self.placement.location-inray.p0)*(self.placement.orientation)).sum(-1)/(self.placement.orientation*inray.d).sum(-1))
         #print 'PlaneSurface.intersection',lam
         inray.p1 = inray.propagate(lam)
     
@@ -497,7 +476,7 @@ class ThinLensH(Volume) :
         #print inray.p1, o1, inray.d, d2
 #        print d1x, d2x, d1y, d2y
         
-        outray = Ray(inray.p1,d2, inray.material, inray.wavelength, inray.color, cumulativePath=inray.prev_pathlength)
+        outray = RayBundle(inray.p1, d2, inray.material, inray.wavelength, inray.color, cumulativePath=inray.prev_pathlength)
 
         # compute out going ray
 
@@ -549,7 +528,7 @@ class Aperture(Volume) :
         #print self.radius, pl.norm(of)
 
         if pl.norm(of) < self.radius:        
-            outray = Ray(inray.p1,inray.d, inray.material, inray.wavelength, inray.color, cumulativePath=inray.cumulativePath)
+            outray = RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, inray.color, cumulativePath=inray.cumulativePath)
 
             # compute out going ray
             return outray
@@ -590,12 +569,12 @@ class AtAperture(Volume) :
         #print self.radius, pl.norm(of)
 
         if pl.norm(of) < self.radius:        
-            outray = Ray(inray.p1,inray.d, inray.material, inray.wavelength, inray.color, cumulativePath=inray.cumulativePath)
+            outray = RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, inray.color, cumulativePath=inray.cumulativePath)
 
             # compute out going ray
             return outray
         else:
-            outray = Ray(inray.p1,inray.d, inray.material, inray.wavelength, np.array(inray.color)*.2, cumulativePath=inray.cumulativePath)
+            outray = RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, np.array(inray.color) * .2, cumulativePath=inray.cumulativePath)
 
             # compute out going ray
             return outray
@@ -625,12 +604,14 @@ def snell(ray,sn,material1,material2) :
 #    d2 = d2/pl.linalg.norm(d2)
  #   r = Ray(ray.p1,d2)
     nr = n1/n2    
-    ct1 = -pl.linalg.dot(sn,ray.d)
-    ct2 = pl.sqrt(1-(nr**2)*(1-ct1**2))
-    if ct1 < 0 :
-        ct2 = -ct2
-    d2 = nr*ray.d+(nr*ct1-ct2)*sn
-    r = Ray(ray.p1,d2, material2, ray.wavelength, ray.color, cumulativePath=ray.cumulativePath)
+    ct1 = -(sn*ray.d).sum(-1)
+    ct2 = np.sqrt(1-(nr**2)*(1-ct1**2))
+    #if ct1 < 0 :
+    #    ct2 = -ct2
+    ct2 = ct2*np.sign(ct1)
+    
+    d2 = nr*ray.d+np.atleast_1d(nr*ct1-ct2)[:,None]*sn
+    r = RayBundle(ray.p1, d2, material2, ray.wavelength, ray.color, cumulativePath=ray.cumulativePath)
 #    print 'snell> in\n',ray
 #    print 'snell> normal ',sn
 #    print 'snell> material 1',material1
@@ -644,7 +625,11 @@ def snell(ray,sn,material1,material2) :
 # Reflection law
 ############################################################################            
 def reflect(ray,sn) :
-    d2 = ray.d-2*pl.dot(ray.d,sn)*sn
-    r = Ray(ray.p1,d2, ray.material, ray.wavelength, ray.color, cumulativePath=ray.cumulativePath)
+    d2 = ray.d-2*np.atleast_1d((ray.d*sn).sum(-1))[:,None]*sn
+    
+    #print d2
+    r = RayBundle(ray.p1, d2, ray.material, ray.wavelength, ray.color, cumulativePath=ray.cumulativePath)
+    
+    #print r.d
     return r
 

@@ -28,13 +28,13 @@ class Source(Volume,list) :
         return [xx,yy,zz]        
     
     def exampleRays(self,d) :
-        r0  = Ray(self.placement.location,[0,0,1], self.material)
-        ryp = Ray(self.placement.location+pl.array([0,d,0]),[0,0,1], self.material)
-        rypp = Ray(self.placement.location+pl.array([0,d/2,0]),[0,0,1], self.material)
-        ryn = Ray(self.placement.location+pl.array([0,-d,0]),[0,0,1], self.material)
-        rynn = Ray(self.placement.location+pl.array([0,-d/2,0]),[0,0,1], self.material)
-        rxp = Ray(self.placement.location+pl.array([d,0,0]),[0,0,1], self.material)
-        rxn = Ray(self.placement.location+pl.array([-d,0,0]),[0,0,1], self.material)
+        r0  = RayBundle(self.placement.location, [0, 0, 1], self.material)
+        ryp = RayBundle(self.placement.location + pl.array([0, d, 0]), [0, 0, 1], self.material)
+        rypp = RayBundle(self.placement.location + pl.array([0, d / 2, 0]), [0, 0, 1], self.material)
+        ryn = RayBundle(self.placement.location + pl.array([0, -d, 0]), [0, 0, 1], self.material)
+        rynn = RayBundle(self.placement.location + pl.array([0, -d / 2, 0]), [0, 0, 1], self.material)
+        rxp = RayBundle(self.placement.location + pl.array([d, 0, 0]), [0, 0, 1], self.material)
+        rxn = RayBundle(self.placement.location + pl.array([-d, 0, 0]), [0, 0, 1], self.material)
         self.append(r0)
         self.append(ryp)
         self.append(rypp)
@@ -93,6 +93,10 @@ class PointSource(Source) :
         '''returns a  set of rays which densely sample the pupil for abberation estimation'''
         return  self._generate_rays(50,10)
     
+    @property
+    def principle_ray(self):
+        return RayBundle(self.placement.location, self.placement.orientation, self.material, color=self.color, wavelength=self.wavelength)
+    
     def _generate_rays(self, nph, nth, jit=False):
         d2 = self.placement.orientation
         #d1 = pl.cross(d2, pl.array([1,0,0]))
@@ -106,26 +110,34 @@ class PointSource(Source) :
         def mray(theta, phi):
             r = np.exp(1j * phi)
             #print r.real, r.imag, np.cos(theta)
-            dn = np.sin(theta) * r.real * d0 + np.sin(theta) * r.imag * d1 + np.cos(theta) * d2
+            #print r.shape, theta.shape, phi.shape
+            dn = (np.sin(theta) * r.real) * d0 + (np.sin(theta) * r.imag) * d1 + np.cos(theta) * d2
+            
+            #print r.shape, dn.shape
             #print pl.norm(dn)
             #dn = dn/pl.norm(dn)
         
-            return Ray(self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
+            return RayBundle(np.zeros_like(dn) + self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
     
-        r0 = Ray(self.placement.location, d2, self.material, color=self.color, wavelength=self.wavelength)
+        #r0 = RayBundle(self.placement.location, d2, self.material, color=self.color, wavelength=self.wavelength)
         #        ryp = Ray(self.placement.location,y1*d1 + z1*d2, self.material, color=self.color)
         #        rypp = Ray(self.placement.location,y2*d1 + z2*d2, self.material, color=self.color)
         #        ryn = Ray(self.placement.location,-y1*d1 + z1*d2, self.material, color=self.color)
         #        rynn = Ray(self.placement.location,-y2*d1 + z2*d2, self.material, color=self.color)
         #        rxp = Ray(self.placement.location,y1*d0 + z1*d2, self.material, color=self.color)
         #        rxn = Ray(self.placement.location,-y1*d0 + z1*d2, self.material, color=self.color)
-        rays.append(r0)
+        #rays.append(r0)
         #        self.append(ryp)
         #        self.append(rypp)
         #        self.append(rynn)
         #        self.append(ryn)
         #        self.append(rxp)
         #        self.append(rxn)
+        
+        ths = [0]
+        phis = [0]
+        
+        
         for th in np.linspace(0, 1, nth)[1:]:
             for phi in (np.linspace(0, 2 * np.pi, np.maximum(nph * th, 3))[:-1] + 3 * np.pi / 4):
                 if jit:
@@ -133,7 +145,13 @@ class PointSource(Source) :
                     thm = th + (np.random.rand(1) - .5) / nth
                 else:
                     thm = th
-                rays.append(mray(np.arcsin(self.NA) * thm, phi))
+                    
+                ths.append(np.arcsin(self.NA) * thm)
+                phis.append(phi)
+                
+        #rays = [mray(t, p) for t, p in zip(ths, phis)]
+        
+        rays = [mray(np.array(ths)[:,None], np.array(phis)[:,None]), ]
                 
         return rays
     
@@ -161,9 +179,9 @@ class FanSource(PointSource):
             #print pl.norm(dn)
             #dn = dn/pl.norm(dn)
             
-            return Ray(self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
+            return RayBundle(self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
         
-        r0 = Ray(self.placement.location, d2, self.material, color=self.color, wavelength=self.wavelength)
+        r0 = RayBundle(self.placement.location, d2, self.material, color=self.color, wavelength=self.wavelength)
         #        ryp = Ray(self.placement.location,y1*d1 + z1*d2, self.material, color=self.color)
         #        rypp = Ray(self.placement.location,y2*d1 + z2*d2, self.material, color=self.color)
         #        ryn = Ray(self.placement.location,-y1*d1 + z1*d2, self.material, color=self.color)

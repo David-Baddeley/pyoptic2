@@ -3,24 +3,21 @@ import numpy as np
 
 
 def plot2d(rays, sli='xz'):
-    if sli == 'xz':
-        def plot_ray(ray):
-            ra = np.array([ri.p0 for ri in ray])
-            if not ray[-1].p1 == None:
-                ra = np.vstack([ra, ray[-1].p1])
-            plt.plot(ra[:, 2], ra[:, 0], c=ray[0].color)
     
-    if sli == 'zx':
-        def plot_ray(ray):
-            ra = np.array([ri.p0 for ri in ray])
-            if not ray[-1].p1 == None:
-                ra = np.vstack([ra, ray[-1].p1])
-            plt.plot(ra[:, 0], ra[:, 2], c=ray[0].color)
+
+    def plot_ray(ray):
+        ra = np.concatenate([np.atleast_3d(ri.p0) for ri in ray], 2)
+        #ra = np.array([ri.p0 for ri in ray])
+        if not ray[-1].p1 == None:
+            ra = np.concatenate([ra, np.atleast_3d(ray[-1].p1)], 2)
+        
+        if sli == 'xz':
+            plt.plot(ra[:, 2,:].squeeze().T, ra[:, 0,:].squeeze().T, c=ray[0].color)
+        elif sli == 'zx':
+            plt.plot(ra[:, 0, :].squeeze().T, ra[:, 2, :].squeeze().T, c=ray[0].color)
+        elif sli == 'xy':
+            plt.plot(ra[:, 1, :].squeeze().T, ra[:, 0, :].squeeze().T, c=ray[0].color)
     
-    if sli == 'xy':
-        def plot_ray(ray):
-            ra = np.array([ri.p0 for ri in ray])
-            plt.plot(ra[:, 1], ra[:, 0], c=ray[0].color)
     
     for ray in rays:
         plot_ray(ray)
