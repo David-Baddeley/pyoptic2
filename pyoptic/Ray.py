@@ -50,6 +50,34 @@ class RayBundle :
     @property
     def cumulativePath(self):
         return self.prev_pathlength + self.pathLength
+    
+    @property
+    def focus(self):
+        d_ = self.d[0]
+        
+        #print self.p0.shape, self.d.shape
+        
+        p_ = self.p0[1:, :] - self.p0[0, :][None, :]
+        
+        #print p_.shape
+        #radial component of distance from centre ray
+        p_radial = p_ - (p_*d_[None,:]).sum(axis=-1)[:,None]*d_[None,:]
+
+        p2 = np.linalg.norm(p_radial, axis=-1)
+        pd_ = p_radial/p2[:,None]
+        
+        #how fast are we propagating in the radial direction?
+        d_radial = (pd_*self.d[1:,:]).sum(-1)
+        
+        #print p2, d_radial
+        
+        l = np.linalg.lstsq(d_radial.reshape(-1, 1), p2)
+        
+        return l[0]
+        
+        #r =  (pd_*self.d[1:, :]).sum(axis=-1)
+        
+        
 
 def RayExample() :
     return RayBundle([0, 0, 0], [0, 0, 1])
