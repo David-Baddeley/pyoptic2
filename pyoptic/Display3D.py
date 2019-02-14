@@ -5,21 +5,21 @@ from Elements import *
 import numpy as np
 
 try:
-    from enthought.tvtk.tools import mlab as ml2
+    #from enthought.tvtk.tools import mlab as ml2
     from mayavi import mlab
-    from enthought.tvtk.tools import visual
+    #from enthought.tvtk.tools import visual
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.common import configure_input_data
 except ImportError:
-    from tvtk.tools import mlab as ml2
-    from tvtk.tools import visual
+    #from tvtk.tools import mlab as ml2
+    #from tvtk.tools import visual
     from tvtk.api import tvtk
     from tvtk.common import configure_input_data
     from mayavi import mlab
 
 
 class STLPart(object):
-    def __init__(self, filename, colour=None, position=[0, 0, 0], orientation=[0, 0, 0]):
+    def __init__(self, filename, colour=None, position=[0, 0, 0], orientation=None, rotation=None):
         self.filename = filename
         self.reader = tvtk.STLReader(file_name=filename)
         self.mapper = tvtk.PolyDataMapper()
@@ -31,7 +31,15 @@ class STLPart(object):
             self.actor.property.color = colour
         
         self.actor.position = position
-        self.actor.orientation = orientation
+        if rotation is None:
+            if orientation is None:
+                self.actor.orientation = [0,0,0]
+            else:
+                a2 = -180*np.arctan(orientation[0]/orientation[1])/np.pi
+                a1 = 180*np.arcsin(orientation[2])/np.pi
+                self.actor.orientation = [a1, 0, a2]
+        else:
+            self.actor.orientation = rotation
     
     def as_scad(self, origin=[0, 0, 0]):
         trans = '[%f, %f, %f]' % tuple(np.array(self.actor.position) - np.array(origin))
@@ -69,12 +77,19 @@ class Display3D :
 
         self.e3d = []
         
-    def _drawLine(self, points, color=[1,1,1]):
-        npts = len(points) - 1
-        lines = np.zeros((npts, 2), 'l')
-        lines[:,0] = np.arange(0, npts-0.5, 1, 'l')
-        lines[:,1] = np.arange(1, npts+0.5, 1, 'l')
-        d = tvtk.PolyData(points=points, lines=lines)
+    def _drawLines(self, points, color=[1,1,1]):
+        nrays = points.shape[0]
+        npts = points.shape[2]
+        nsegs = npts - 1
+        lines = np.zeros((nsegs*nrays, 2), 'l')
+        pts_cat = np.zeros([npts*nrays, 3], 'f')
+        for j in range(nrays):
+            pts_cat[(j*npts):((j+1)*npts), :] = points[j,:,:].T
+            lines[(j*nsegs):((j+1)*nsegs),0] = (j*npts) + np.arange(0, nsegs-0.5, 1, 'l')
+            lines[(j * nsegs):((j + 1) * nsegs),1] = (j * npts) + np.arange(1, nsegs + 0.5, 1, 'l')
+            #lines[:,1] = np.arange(1, nsegs+0.5, 1, 'l')
+            
+        d = tvtk.PolyData(points=pts_cat, lines=lines)
         m = tvtk.PolyDataMapper()
         configure_input_data(m, d)
         a = tvtk.Actor(mapper=m)
@@ -110,17 +125,22 @@ class Display3D :
 #                self.f.add(rdo)
 #                self.e3d.append(rdo)
         for rb in self.r:
-            rbp = [r.p0 for r in rb] 
-            if (not rb[-1].p1 == None):
-                rbp.append(rb[-1].p1)
+            ra = np.concatenate([np.atleast_3d(ri.p0) for ri in rb], 2)
+            #ra = np.array([ri.p0 for ri in ray])
+            if not rb[-1].p1 == None:
+                ra = np.concatenate([ra, np.atleast_3d(rb[-1].p1)], 2)
+            
+            # rbp = [r.p0 for r in rb]
+            # if (not rb[-1].p1 == None):
+            #     rbp.append(rb[-1].p1)
                 
-            if (len(rbp) > 1):
+            if (ra.shape[0] > 1):
                 #print rbp
                 #rdo = ml2.Line3(rbp,radius=0.05, color=r.color)
     #           rdo.representation = 'wireframe'
                 #rdo.use_tubes = False
                 #self.f.scene.add(rdo)
-                rdo = self._drawLine(rbp, color=r.color)
+                rdo = self._drawLines(ra, color=rb[0].color)
                 self.e3d.append(rdo)
                 
         for p in self.stl_parts:

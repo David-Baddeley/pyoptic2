@@ -71,6 +71,21 @@ class System(list) :
             raybranch.append(rp)
             
         return raybranch
+    
+    def prepend(self, elements):
+        try:
+            for e in elements[::-1]:
+                self.insert(0, e)
+        except AttributeError:
+            #single element
+            self.insert(0, elements)
+            
+    def add(self, elements):
+        try:
+            self.extend(elements)
+        except TypeError:
+            self.append(elements)
+                
 
                 
     def __str__(self) :

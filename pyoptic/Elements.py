@@ -29,19 +29,35 @@ class Volume() :
         s += 'Volume.material          : \n'+str(self.material)
         return s
     
+    @property
+    def orientation(self):
+        return self.placement.orientation
+    
+    @property
+    def location(self):
+        return self.placement.location
+    
     def _surface_coordinates(self, proj=None):
-        if proj in  ['x', 'y', 'z']:
+        if False:#proj in  ['x', 'y', 'z']:
             xx = np.linspace(-self.dimension[0], self.dimension[0])[:,None]
             yy = 0 * xx
         #elif proj == 'y':
         #    yy = np.linspace(-self.dimension[0], self.dimension[0])
         #    xx = 0 * yy
         elif self.shape == self.rect:
-            x = pl.arange(-self.dimension[0], self.dimension[0] + 1e-8, self.dimension[0] / 5)
-            y = pl.arange(-self.dimension[1], self.dimension[1] + 1e-8, self.dimension[1] / 5)
-            xx, yy = pl.meshgrid(x, y)
+            if not proj is None:
+                xd, yd, _ = self.dimension
+                xx = np.array([-xd, xd, xd, -xd, -xd])[:,None]
+                yy = np.array([-yd, -yd, yd, yd, -yd])[:,None]
+            else:
+                x = pl.arange(-self.dimension[0], self.dimension[0] + 1e-8, self.dimension[0] / 5)
+                y = pl.arange(-self.dimension[1], self.dimension[1] + 1e-8, self.dimension[1] / 5)
+                xx, yy = pl.meshgrid(x, y)
         else:
-            r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, 1))
+            if not proj is None:
+                r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, 1))
+            else:
+                r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, .1))
             t = 2 * pl.pi * pl.arange(0, 1.01, .1)
         
             rr, tt = pl.meshgrid(r, t)
@@ -70,6 +86,10 @@ class Volume() :
             N = np.array([1,0,0])
         else:
             N = np.array([0,0,1])
+            
+            if np.abs(np.dot(N, self.placement.orientation)) >.9:
+                #object is aligned with z axis, use x axis instead
+                N = np.array([1,0,0])
             
             
         ax = pl.cross(N, self.placement.orientation)
