@@ -44,10 +44,23 @@ def plot_system2d(sys, sli='xz'):
 
 
 def dotplt(rays):
-    NA = max([np.sin(np.arccos(np.dot(r_[-1].d, rays[0][-1].d))) for r_ in rays[1:]])
-    r_dl = rays[0][-1].wavelength * 1e-6 / (2 * NA)
-    pts = np.array([r_i[-1].p0 for r_i in rays])
-    plt.plot(pts[:, 1] - pts[:, 1].mean(), pts[:, 0] - pts[:, 0].mean(), '.')
+    NA = max([np.sin(np.arccos(np.dot(rays[-1].d[0], d_i))) for d_i in rays[-1].d[1:]])
+    #print(rays[-1].d[0])
+    #print([np.sin(np.arccos(np.dot(rays[-1].d[0], d_i))) for d_i in rays[-1].d[1:]])
+    #print(rays[-1])
+    #print(NA)
+    xh = np.cross(rays[-1].d[0], rays[-1].d[1])
+    yh = np.cross(xh, rays[-1].d[0])
+    
+    xh = xh/np.linalg.norm(xh)
+    yh = yh/np.linalg.norm(yh)
+    
+    r_dl = rays[-1].wavelength * 1e-6 / (2 * NA)
+    pts = rays[-1].p0 #np.array([r_i[-1].p0 for r_i in rays])
+    
+    x1 = (pts*xh[None,:]).sum(1)
+    y1 = (pts * yh[None, :]).sum(1)
+    plt.plot(x1 -x1.mean(), y1 - y1.mean(), '.')
     
     t = np.linspace(0, 2 * np.pi)
     plt.plot(r_dl * np.sin(t), r_dl * np.cos(t))

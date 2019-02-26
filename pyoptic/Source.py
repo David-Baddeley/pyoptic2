@@ -157,6 +157,52 @@ class PointSource(Source) :
     
     def exampleRays(self,d, nph = 9, nth=2, jit=True):
         self.extend(self._generate_rays(nph, nth, jit))
+        
+class ColimatedSource(PointSource):
+    def __init__(self, name, placement, diameter=3.0, color=(1.0,0,0), wavelength=635.):
+        PointSource.__init__(self, name, placement, NA=0, color=color, wavelength=wavelength)
+        
+        self.diameter = diameter
+
+    def _generate_rays(self, nph, nth, jit=False):
+        d2 = self.placement.orientation
+        #d1 = pl.cross(d2, pl.array([1,0,0]))
+        d1 = pl.cross(d2, pl.array([1, 1, 1]) - d2)
+        d1 = d1 / pl.norm(d1)
+        d0 = pl.cross(d1, d2)
+        d0 = d0 / pl.norm(d0)
+    
+        rays = []
+    
+        def mray(theta, phi):
+            r = np.exp(1j * phi)
+
+            dn = (theta * r.real) * d0 + (theta * r.imag) * d1
+
+        
+            return RayBundle(dn + self.placement.location, d2*np.ones_like(dn), self.material, color=self.color,
+                             wavelength=self.wavelength)
+    
+    
+        ths = [0]
+        phis = [0]
+    
+        for th in np.linspace(0, 1, nth)[1:]:
+            for phi in (np.linspace(0, 2 * np.pi, np.maximum(nph * th, 3))[:-1] + 3 * np.pi / 4):
+                if jit:
+                    phi = phi + (np.random.rand(1) - .5) * 2 * np.pi / (nph * th)
+                    thm = th + (np.random.rand(1) - .5) / nth
+                else:
+                    thm = th
+            
+                ths.append(0.5*self.diameter * thm)
+                phis.append(phi)
+    
+        #rays = [mray(t, p) for t, p in zip(ths, phis)]
+    
+        rays = [mray(np.array(ths)[:, None], np.array(phis)[:, None]), ]
+    
+        return rays
 
 
 class FanSource(PointSource):

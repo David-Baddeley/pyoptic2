@@ -375,8 +375,10 @@ class ThinLens(Volume) :
             
         #r = inray.p1 - self.placement.location
         
+        print inray.p1.shape, inray.d.shape, sn.shape
+        
         #virtual 'in focus' object'
-        o1 = inray.p1 - inray.d*self.focalLength/(inray.d*sn).sum(-1)
+        o1 = inray.p1 - inray.d*self.focalLength/(inray.d*sn).sum(-1)[:,None]
         
         #output ray will be parallel to the ray from point through origin
         r = self.placement.location - o1
