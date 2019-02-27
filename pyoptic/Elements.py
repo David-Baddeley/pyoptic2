@@ -55,7 +55,7 @@ class Volume() :
                 xx, yy = pl.meshgrid(x, y)
         else:
             if not proj is None:
-                r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, 1))
+                r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, .1))
             else:
                 r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, .1))
             t = 2 * pl.pi * pl.arange(0, 1.01, .1)

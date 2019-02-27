@@ -10,7 +10,7 @@ from Elements  import *
 class System(list) : 
 
     def __init__(self) :
-        print "System:__init__>"
+        #print "System:__init__>"
 
         # maximum size as determined from the elements
         self.size = [0,0,0]
