@@ -2,6 +2,8 @@
 
 This is a fork to keep track of my changes and bugfixes to the google code project pyoptic (code.google.com/p/pyoptic) which now seems to be unmaintained. Pyoptic is a python-based raytracing/optical CAD package which works from a programmatic definition of the optical system. It was originally envisaged as a 'toy' tracer for educational purposes, but is arguably capable of being used in some (limited) production uses. I use it for testing the arrangement of optical components in large systems such as microscopes.
 
+By now, things have divereged a lot from the original pyoptic, motivating the change to pyoptic2
+
 ### Features ###
 
 * Spherical surfaces

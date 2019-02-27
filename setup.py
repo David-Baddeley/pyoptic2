@@ -13,8 +13,8 @@
 
 def configuration(parent_package='',top_path=None):
     from numpy.distutils.misc_util import Configuration
-    config = Configuration('pyoptic',parent_package,top_path)
-    config.add_subpackage('pyoptic')
+    config = Configuration('pyoptic2',parent_package,top_path)
+    config.add_subpackage('pyoptic2')
     
     #config.make_svn_version_py()  # installs __svn_version__.py
     #config.make_config_py()
