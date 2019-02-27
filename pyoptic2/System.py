@@ -1,10 +1,13 @@
 import sources
+#import collections
 
 # Complete optical system
-class System(list) : 
-
-    def __init__(self, iterable) :
-        list.__init__(self, iterable)
+class System(list):
+    def __init__(self, iterable=None) :
+        list.__init__(self)
+        
+        if not (iterable is None):
+            self.extend(iterable)
 
         # maximum size as determined from the elements
         # FIXME - is this used anywhere?
@@ -42,10 +45,13 @@ class System(list) :
         raybranch.append(r)
         for j in range(startAt,len(self)) :
             #print 'System.propagate> element=',j
-            if j == 0:
-                rp = self[j].propagate(source, raybranch[j-startAt])
-            else:
-                rp = self[j].propagate(self[j-1],raybranch[j-startAt])
+            #if j == 0:
+            #    rp = self[j].propagate(raybranch[j-startAt])
+            #else:
+            
+            #print self[j].__class__
+            
+            rp = self[j].propagate(raybranch[j-startAt])
                 
             if rp == None:
                 break                   
@@ -61,11 +67,30 @@ class System(list) :
             #single element
             self.insert(0, elements)
             
-    def add(self, elements):
+    # def add(self, elements):
+    #     try:
+    #         self.extend(elements)
+    #     except TypeError:
+    #         self.append(elements)
+            
+    def add(self, elements, principle_ray=None):
+        out_ray = principle_ray
         try:
-            self.extend(elements)
+            for e in elements:
+                self.append(e)
+                if not out_ray is None:
+                    out_ray = e.propagate(out_ray)
+                
         except TypeError:
-            self.append(elements)
+            #single element
+            e = elements
+
+            self.append(e)
+            if not out_ray is None:
+                out_ray = e.propagate(out_ray)
+                
+        return out_ray
+    
                 
 
                 

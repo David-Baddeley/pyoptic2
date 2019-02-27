@@ -3,6 +3,7 @@ import numpy as np
 from elements import *
 from rays import *
 from placement import *
+from material import *
 
 class Source(Element, list) :
     def __init__(self,name,placement, wavelength=635.) :

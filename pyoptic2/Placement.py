@@ -4,8 +4,8 @@ class Placement(object):
     """ Class to describe the location and orientation of a volume """
 
     def __init__(self, location, orientation) :
-        self.location    = np.array(location, 'f')
-        self.orientation = np.array(orientation, 'f')
+        self.location    = np.squeeze(np.array(location, 'f'))
+        self.orientation = np.squeeze(np.array(orientation, 'f'))
         self.orientation /= np.linalg.norm(self.orientation)
 
     def __str__(self) :

@@ -1,6 +1,6 @@
 import numpy as np
 
-from material   import Material
+import material
 from rays       import RayBundle
 
 SHAPE_RECT, SHAPE_CIRC = range(2)
@@ -39,7 +39,7 @@ class Element(object) :
         #elif proj == 'y':
         #    yy = np.linspace(-self.dimension[0], self.dimension[0])
         #    xx = 0 * yy
-        elif self.shape == self.rect:
+        elif self.shape == SHAPE_RECT:
             if not proj is None:
                 xd, yd, _ = self.dimension
                 xx = np.array([-xd, xd, xd, -xd, -xd])[:,None]
@@ -105,16 +105,16 @@ class OpticalSurface(Element) :
     def __init__(self) :
         pass
 
-    def propagate(self,previous,inray) :
+    def propagate(self,inray) :
         # compute intersection
         self.intersection(inray)                    
         # compute normal
         sn = self.surfaceNormal(inray.p1)            
         # compute out going ray
         
-        if self.material.type == Material.MIRROR :
+        if self.material.type == material.Material.REFLECT :
             outray = reflect(inray,sn)
-        elif self.material.type == Material.REFRACT :
+        elif self.material.type == material.Material.REFRACT :
             outray = snell(inray,sn,inray.material,self.material)
 
         return outray
@@ -273,21 +273,6 @@ class CylindricalSurface(OpticalSurface) :
         sn = sn/np.linalg.norm(sn, axis=-1, keepdims=True)
         return sn
 
-############################################################################
-# EvenAsphericalSurface
-############################################################################            
-class EvenAsphericalSurface(Element) :
-    def __init__(self,volume) :
-        print 'AsphericalSurface.__init__>'
-        self.volume = volume
-
-############################################################################
-# OddAsphericalSurface
-############################################################################            
-class OddAsphericalSurface(Element) :
-    def __init__(self,volume) :
-        print 'AsphericalSurface.__init__>'
-        self.volume = volume
 
 ############################################################################
 # ThinLens
@@ -297,7 +282,7 @@ class ThinLens(PlaneSurface) :
         PlaneSurface.__init__(self,*args, **kwargs)
         self.focalLength  = kwargs['focal_length']
 
-    def propagate(self,previous,inray) :
+    def propagate(self,inray) :
         # compute intersection
         self.intersection(inray)                    
         # compute normal
@@ -327,7 +312,7 @@ class ThinLensH(ThinLens) :
         self.focalLength  = kwargs['focal_length']
         self.focalPoint = self.focalLength*self.orientation + self.location
 
-    def propagate(self,previous,inray) :
+    def propagate(self,inray) :
         # compute intersections
         self.intersection(inray)
 
@@ -381,7 +366,7 @@ class Aperture(PlaneSurface) :
         self.radius = kwargs['radius']
         
    
-    def propagate(self,previous,inray) :
+    def propagate(self,inray) :
         # compute intersections
         self.intersection(inray)
 
@@ -392,6 +377,42 @@ class Aperture(PlaneSurface) :
 
         return RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, inray.color,
                            cumulativePath=inray.prev_pathlength, intensities=inray.intensities*mask)
+
+
+
+##############################################
+# Mirror predefined object
+def rotation_matrix(axis, theta):
+    """
+    Return the rotation matrix associated with counterclockwise rotation about
+    the given axis by theta radians.
+    """
+    axis = np.asarray(axis)
+    axis = axis / np.sqrt(np.dot(axis, axis))
+    a = np.cos(theta / 2.0)
+    b, c, d = -axis * np.sin(theta / 2.0)
+    aa, bb, cc, dd = a * a, b * b, c * c, d * d
+    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
+    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
+                     [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
+                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
+
+class Mirror(PlaneSurface):
+    def __init__(self, *args, **kwargs):
+        
+        kwargs['material'] = material.MIRROR
+        
+        PlaneSurface.__init__(self, *args, **kwargs)
+
+
+    @classmethod
+    def to_rotate(cls, placement, axis=[0, 0, 1], angle=np.pi / 2., **kwargs):
+        nm = np.dot(rotation_matrix(axis, angle / 2.), placement.orientation)
+        return cls(placement.offset(orientation=nm), **kwargs)
+
+    @classmethod
+    def to_rotate_deg(cls, placement, axis=[0, 0, 1], angle=90., **kwargs):
+        return cls.to_rotate(placement, axis=axis, angle=angle * np.pi / 180., **kwargs)
 
         
         

@@ -63,8 +63,8 @@ def decompZar(filename):
    
 class DefaultGlass(object):
     #for compatibility with pyoptic
-    mirror  = 1
-    refract = 2
+    REFLECT = 1
+    REFRACT = 2
     
     def __init__(self, n=1.0, typ=2) :
         self.type = typ
@@ -150,7 +150,7 @@ class ZMX(object):
                 
     
     def toPyOptic(self, position, direction=[0,0,1], fb=None, flip = False, f = None, orientation=[0,1,0]):
-        from pyoptic import System as pyo
+        import pyoptic2 as pyo
 
         d = np.array(direction)
         pos = np.array(position)
@@ -160,7 +160,7 @@ class ZMX(object):
         return self.to_pyoptic(plc, fb, flip, f, orientation)
     
     def to_pyoptic(self, placement, fb=None, flip = False, f = None, orientation=[0,1,0]):
-        from pyoptic import System as pyo
+        import pyoptic2 as pyo
     
         #we're only interested in real surfaces
         surfs = self.surfaces[1:-1]
@@ -191,29 +191,53 @@ class ZMX(object):
                 glass = self.surfaces[i].glass
                 if s.radius is None:
                     #planar
-                    outSurfs.append(pyo.PlaneSurface('ZMX_%d' % i, 1, np.ones(3) * float(s.diam[0]),
-                                                           pyo.OffsetPlacement(placement, (z0 - 0)), glass))
+                    outSurfs.append(pyo.PlaneSurface(name='ZMX_%d' % i,
+                                                     shape=pyo.SHAPE_CIRC,
+                                                     dimension=np.ones(3) * float(s.diam[0]),
+                                                     placement= pyo.OffsetPlacement(placement, (z0 - 0)),
+                                                     material=glass))
                 elif s.type == 'TOROIDAL':
                     #cylindrical lens
-                    outSurfs.append(pyo.CylindricalSurface('ZMX_%d' % i, 1, np.ones(3) * float(s.diam[0]),
-                                                         pyo.OffsetPlacement(placement, (z0 - 0)), glass, -s.radius, orientation))
+                    outSurfs.append(pyo.CylindricalSurface(name='ZMX_%d' % i,
+                                                     shape=pyo.SHAPE_CIRC,
+                                                     dimension=np.ones(3) * float(s.diam[0]),
+                                                     placement = pyo.OffsetPlacement(placement, (z0 - 0)),
+                                                     material=glass,
+                                                     curvature_radius=-s.radius,
+                                                     curvature_axis=orientation))
                 else:
-                    outSurfs.append(pyo.SphericalSurface('ZMX_%d'%i, 1,np.ones(3)*float(s.diam[0]),
-                                                         pyo.OffsetPlacement(placement, (z0 - 0)),glass, -s.radius))
+                    outSurfs.append(pyo.SphericalSurface(name='ZMX_%d' % i,
+                                                     shape=pyo.SHAPE_CIRC,
+                                                     dimension=np.ones(3) * float(s.diam[0]),
+                                                     placement = pyo.OffsetPlacement(placement, (z0 - 0)),
+                                                     material=glass,
+                                                     curvature_radius=-s.radius))
                 #print((z0, s.disz))
                 z0 += self.surfaces[i].disz         
         else:
             for i, s in enumerate(surfs):
                 if s.radius is None:
                     #planar
-                    outSurfs.append(pyo.PlaneSurface('ZMX_%d' % i, 1, np.ones(3) * float(s.diam[0]),
-                                                           pyo.OffsetPlacement(placement, (z0 - 0)), s.glass))
+                    outSurfs.append(pyo.PlaneSurface(name='ZMX_%d' % i,
+                                                     shape=pyo.SHAPE_CIRC,
+                                                     dimension=np.ones(3) * float(s.diam[0]),
+                                                     placement= pyo.OffsetPlacement(placement, (z0 - 0)),
+                                                     material=s.glass))
                 elif s.type == 'TOROIDAL':
-                    outSurfs.append(pyo.CylindricalSurface('ZMX_%d' % i, 1, np.ones(3) * float(s.diam[0]),
-                                                         pyo.OffsetPlacement(placement, (z0 - 0)), s.glass, s.radius, orientation))
+                    outSurfs.append(pyo.CylindricalSurface(name='ZMX_%d' % i,
+                                                     shape=pyo.SHAPE_CIRC,
+                                                     dimension=np.ones(3) * float(s.diam[0]),
+                                                     placement= pyo.OffsetPlacement(placement, (z0 - 0)),
+                                                     material=s.glass,
+                                                     curvature_radius=s.radius,
+                                                     curvature_axis=orientation))
                 else:
-                    outSurfs.append(pyo.SphericalSurface('ZMX_%d'%i, 1,np.ones(3)*float(s.diam[0]),
-                                                         pyo.OffsetPlacement(placement, (z0 - 0)),s.glass, s.radius))
+                    outSurfs.append(pyo.SphericalSurface(name='ZMX_%d' % i,
+                                                     shape=pyo.SHAPE_CIRC,
+                                                     dimension=np.ones(3) * float(s.diam[0]),
+                                                     placement= pyo.OffsetPlacement(placement, (z0 - 0)),
+                                                     material=s.glass,
+                                                     curvature_radius=s.radius))
                 #print((z0, s.disz))
                 z0 += s.disz
                 
@@ -245,7 +269,7 @@ def read_cached_zar(filename):
     import shelve
     #rom PYME.misc import zemax
     
-    shv = shelve.open('lensdb.shv')
+    shv = shelve.open('lensdb2.shv')
     try:
         lens = shv[filename]
     except KeyError:

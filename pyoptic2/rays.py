@@ -37,6 +37,12 @@ class RayBundle :
             return lam[:,None]*self.d + self.p0
         else:
             return lam*self.d + self.p0
+        
+    def prop_place(self, lam):
+        """ returns a Placement object"""
+        
+        import placement
+        return placement.Placement(np.squeeze(self.propagate(lam)), np.squeeze(self.d))
 
     def __str__(self) :
         s  = ''
