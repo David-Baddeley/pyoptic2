@@ -8,7 +8,7 @@ def sphericalReflector() :
     ppos = [0,0,0]
     pdir = [0,0,1]
     s0 = Source("light source",Placement(ppos,pdir))
-    s0.exampleRays(0.04)
+    s0.example_rays(0.04)
 
     # spherical reflector 
     ppos = [0,0,0.20]

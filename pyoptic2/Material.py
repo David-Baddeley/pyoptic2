@@ -1,5 +1,3 @@
-import pylab as pl 
-
 class Material(object):
 
     mirror  = 1

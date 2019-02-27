@@ -1,5 +1,5 @@
-from System import *
-from Elements import *
+from system import *
+from elements import *
 #from Source import *
 
 import numpy as np

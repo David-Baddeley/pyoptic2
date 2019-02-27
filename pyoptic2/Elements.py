@@ -3,9 +3,9 @@ import numpy as np
 
 #from numpy.linalg import dot
 
-from Material  import *
-from Placement import *
-from Ray       import *
+from material  import *
+from placement import *
+from rays       import *
 
 class Volume() :
     ''' Orientable volume, base class to describe extent, material and orientation of a volume containing ''' 

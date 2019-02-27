@@ -1,13 +1,13 @@
 import pylab as pl
 import numpy as np
 
-from Elements import *
-from Ray import *
-from Placement import *
+from elements import *
+from rays import *
+from placement import *
 
 class Source(Volume,list) :
     def __init__(self,name,placement, wavelength=635.) :
-        print 'Source.__init__'
+        
         self.name = name
         self.placement = placement
         self.dimension = pl.array([0.05,0.05,0.01])
@@ -27,7 +27,7 @@ class Source(Volume,list) :
         
         return [xx,yy,zz]        
     
-    def exampleRays(self,d) :
+    def example_rays(self, d) :
         r0  = RayBundle(self.placement.location, [0, 0, 1], self.material)
         ryp = RayBundle(self.placement.location + pl.array([0, d, 0]), [0, 0, 1], self.material)
         rypp = RayBundle(self.placement.location + pl.array([0, d / 2, 0]), [0, 0, 1], self.material)
@@ -43,16 +43,7 @@ class Source(Volume,list) :
         self.append(rxp)
         self.append(rxn)
 
-#        r0p  = Ray(self.placement.location,[ 0.        ,  0.04993762,  0.99875234])
-#        rypp = Ray(self.placement.location+pl.array([0,d,0]),[ 0.        ,  0.04993762,  0.99875234])
-#        rynp = Ray(self.placement.location+pl.array([0,-d,0]),[ 0.        ,  0.04993762,  0.99875234])
-#        rxpp = Ray(self.placement.location+pl.array([d,0,0]),[ 0.        ,  0.04993762,  0.99875234])
-#        rxnp = Ray(self.placement.location+pl.array([-d,0,0]),[ 0.        ,  0.04993762,  0.99875234])
-#        self.append(r0p)
-#        self.append(rypp)
-#        self.append(rynp)
-#        self.append(rxpp)
-#        self.append(rxnp)
+
 
 class PointSource(Source) :
     def __init__(self,name,placement, NA=1.49/1.51, color=(1.0, 0, 0), wavelength=635.) :
@@ -78,7 +69,6 @@ class PointSource(Source) :
         
         return [xx,yy,zz]
     
-    #def _mray(self, theta, phi):
     
     @property
     def chief_rays(self):
@@ -109,30 +99,11 @@ class PointSource(Source) :
     
         def mray(theta, phi):
             r = np.exp(1j * phi)
-            #print r.real, r.imag, np.cos(theta)
-            #print r.shape, theta.shape, phi.shape
+
             dn = (np.sin(theta) * r.real) * d0 + (np.sin(theta) * r.imag) * d1 + np.cos(theta) * d2
-            
-            #print r.shape, dn.shape
-            #print pl.norm(dn)
-            #dn = dn/pl.norm(dn)
         
             return RayBundle(np.zeros_like(dn) + self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
     
-        #r0 = RayBundle(self.placement.location, d2, self.material, color=self.color, wavelength=self.wavelength)
-        #        ryp = Ray(self.placement.location,y1*d1 + z1*d2, self.material, color=self.color)
-        #        rypp = Ray(self.placement.location,y2*d1 + z2*d2, self.material, color=self.color)
-        #        ryn = Ray(self.placement.location,-y1*d1 + z1*d2, self.material, color=self.color)
-        #        rynn = Ray(self.placement.location,-y2*d1 + z2*d2, self.material, color=self.color)
-        #        rxp = Ray(self.placement.location,y1*d0 + z1*d2, self.material, color=self.color)
-        #        rxn = Ray(self.placement.location,-y1*d0 + z1*d2, self.material, color=self.color)
-        #rays.append(r0)
-        #        self.append(ryp)
-        #        self.append(rypp)
-        #        self.append(rynn)
-        #        self.append(ryn)
-        #        self.append(rxp)
-        #        self.append(rxn)
         
         ths = [0]
         phis = [0]
@@ -149,13 +120,12 @@ class PointSource(Source) :
                 ths.append(np.arcsin(self.NA) * thm)
                 phis.append(phi)
                 
-        #rays = [mray(t, p) for t, p in zip(ths, phis)]
         
         rays = [mray(np.array(ths)[:,None], np.array(phis)[:,None]), ]
                 
         return rays
     
-    def exampleRays(self,d, nph = 9, nth=2, jit=True):
+    def example_rays(self, d, nph = 9, nth=2, jit=True):
         self.extend(self._generate_rays(nph, nth, jit))
         
 class ColimatedSource(PointSource):
@@ -206,7 +176,8 @@ class ColimatedSource(PointSource):
 
 
 class FanSource(PointSource):
-    def exampleRays(self, d, phi=0, nth=2, jit=True):
+    #FIXME - does this still work?
+    def example_rays(self, d, phi=0, nth=2, jit=True):
         y1 = self.NA
         z1 = pl.sqrt(1 - y1 ** 2)
         y2 = y1 / pl.sqrt(2)
@@ -228,19 +199,9 @@ class FanSource(PointSource):
             return RayBundle(self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
         
         r0 = RayBundle(self.placement.location, d2, self.material, color=self.color, wavelength=self.wavelength)
-        #        ryp = Ray(self.placement.location,y1*d1 + z1*d2, self.material, color=self.color)
-        #        rypp = Ray(self.placement.location,y2*d1 + z2*d2, self.material, color=self.color)
-        #        ryn = Ray(self.placement.location,-y1*d1 + z1*d2, self.material, color=self.color)
-        #        rynn = Ray(self.placement.location,-y2*d1 + z2*d2, self.material, color=self.color)
-        #        rxp = Ray(self.placement.location,y1*d0 + z1*d2, self.material, color=self.color)
-        #        rxn = Ray(self.placement.location,-y1*d0 + z1*d2, self.material, color=self.color)
+        
         self.append(r0)
-        #        self.append(ryp)
-        #        self.append(rypp)
-        #        self.append(rynn)
-        #        self.append(ryn)
-        #        self.append(rxp)
-        #        self.append(rxn)
+
         for th in np.linspace(-1, 1, nth):
             #for phi in (np.linspace(0, 2 * np.pi, np.maximum(nph * th, 3))[:-1] + 3 * np.pi / 4):
             if jit:
@@ -250,11 +211,9 @@ class FanSource(PointSource):
                 thm = th
             self.append(mray(np.arcsin(self.NA) * thm, phi))
             
-            #for phi in np.linspace(0, 2*np.pi, nph):
-            #    self.append(mray(np.arcsin(self.NA)/2, phi))
-        
+
 
 def SourceTest() :
     s = Source("test",Placement([0,0,0],[0,0,1]))
-    s.exampleRays(0.04)
+    s.example_rays(0.04)
     return s
