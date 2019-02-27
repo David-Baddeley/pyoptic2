@@ -4,13 +4,13 @@ from elements import *
 from rays import *
 from placement import *
 
-class Source(Volume,list) :
+class Source(Element, list) :
     def __init__(self,name,placement, wavelength=635.) :
         
         self.name = name
         self.placement = placement
         self.dimension = np.array([0.05,0.05,0.01])
-        self.material = Material(Material.refract,1.0)
+        self.material = Material(Material.REFRACT, 1.0)
         self.wavelength=wavelength
 
     def __str__(self) :
@@ -50,7 +50,7 @@ class PointSource(Source) :
         self.name = name
         self.placement = placement
         self.dimension = np.array([0.05,0.05,0.01])
-        self.material = Material(Material.refract,1.0)
+        self.material = Material(Material.REFRACT, 1.0)
         self.NA = NA
         self.color = color
         self.wavelength=wavelength

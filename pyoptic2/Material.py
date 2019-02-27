@@ -1,7 +1,7 @@
 class Material(object):
 
-    mirror  = 1
-    refract = 2
+    MIRROR  = 1
+    REFRACT = 2
 
     def __init__(self, type, data = None) :
 
@@ -10,7 +10,7 @@ class Material(object):
     
     def __str__(self) :
         s =  'Material                 : '+str(self.type)+'\n'
-        if self.type == self.refract :
+        if self.type == self.REFRACT :
             s = 'Material                 : '+str(self.n)
         
         return s
@@ -91,4 +91,4 @@ class AbbeGlass(CauchyGlass):
     
         
         
-Air = Material(Material.refract, 1.0)
+Air = Material(Material.REFRACT, 1.0)

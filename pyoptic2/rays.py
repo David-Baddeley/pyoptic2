@@ -3,7 +3,7 @@ import numpy as np
 class RayBundle :
     ''' Class describing a light ray from an initial point to a final point '''
 
-    def __init__(self, point, dir, material, wavelength=635., color=(1.0, 0, 0), cumulativePath=0) :
+    def __init__(self, point, dir, material, wavelength=635., color=(1.0, 0, 0), cumulativePath=0, intensities=None) :
         '''Construct a ray from a start point and direction dir'''
         #print "Ray:__init__>"
         
@@ -17,7 +17,14 @@ class RayBundle :
 
         # values after the ray has been propagated (empty to start with)
         self.p1 = None
-        self.pha = 0 
+        if (intensities is None):
+            if (self.d.ndim == 1):
+                self.intensities = np.array([1,])
+            else:
+                self.intensities = np.ones(self.d.shape[0], 'f')
+        else:
+            self.intensities = intensities
+         
         self.color = color
         
         self.prev_pathlength = cumulativePath
