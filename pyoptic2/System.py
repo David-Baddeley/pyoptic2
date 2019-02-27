@@ -74,23 +74,29 @@ class System(list):
     #     except TypeError:
     #         self.append(elements)
             
+    def _add_element(self, e, ray=None):
+        if (len(self) > 0):
+            e.material2 = self[-1].material
+        elif not (ray is None):
+            e.material2 = ray.material
+            
+        self.append(e)
+        if not ray is None:
+            ray = e.propagate(ray)
+            
+        return ray
+    
     def add(self, elements, principle_ray=None):
         out_ray = principle_ray
         try:
             for e in elements:
-                self.append(e)
-                if not out_ray is None:
-                    out_ray = e.propagate(out_ray)
+                out_ray = self._add_element(e, out_ray)
                 
         except TypeError:
             #single element
-            e = elements
-
-            self.append(e)
-            if not out_ray is None:
-                out_ray = e.propagate(out_ray)
+            out_ray = self._add_element(elements, out_ray)
                 
-        return out_ray
+        return elements, out_ray
     
                 
 

@@ -15,6 +15,8 @@ class Element(object) :
         self.dimension = np.array(dimension)
         self.placement = placement
         self.material  = material
+        
+        self.material2 = kwargs.get('material2', None)
 
     def  __str__(self) :
         s  = 'Volume\n'
@@ -112,10 +114,20 @@ class OpticalSurface(Element) :
         sn = self.surfaceNormal(inray.p1)            
         # compute out going ray
         
+        if np.ndim(inray.d) == 1:
+            forwards = np.dot(self.orientation, inray.d) > 0
+        else:
+            forwards = np.dot(self.orientation, inray.d[0]) > 0
+        
+      
+        
         if self.material.type == material.Material.REFLECT :
             outray = reflect(inray,sn)
         elif self.material.type == material.Material.REFRACT :
-            outray = snell(inray,sn,inray.material,self.material)
+            if forwards:
+                outray = snell(inray,sn,inray.material,self.material)
+            else:
+                outray = snell(inray, sn, inray.material, self.material2, dir=1)
 
         return outray
         
@@ -168,6 +180,8 @@ class SphericalSurface(OpticalSurface) :
     def intersection(self,ray) :
         dv = ray.p0 - self.placement.orientation*self.radcurv - self.placement.location
 
+        dir = np.sign(np.mean((ray.d*self.orientation).sum(-1)))
+
         a = 1
         b = 2*(ray.d*dv).sum(-1)
         c = (dv*dv).sum(-1)-self.radcurv**2
@@ -178,9 +192,9 @@ class SphericalSurface(OpticalSurface) :
         lamp = (-b+np.sqrt(qsc))/(2*a)
         lamn = (-b-np.sqrt(qsc))/(2*a)
         
-        if self.radcurv > 0 :
+        if self.radcurv*dir > 0 :
             lam = np.minimum(lamp,lamn)
-        elif self.radcurv < 0 :
+        elif self.radcurv*dir < 0 :
             lam = np.maximum(lamp,lamn)
             
         lam = lam*(qs >= 0)
@@ -200,16 +214,6 @@ class SphericalSurface(OpticalSurface) :
         s += 'SphericalSurface.volume  : \n' + Element.__str__(self) + '\n'
         s += 'SphericalSurface.radcurv : '+str(self.radcurv)+'\n'
         return s
-
-############################################################################
-# ParabolicSurface
-############################################################################
-class ParabolicSurface(Element) :
-    def __init__(self,name,shape,dimension,placement,material,a,b) :
-        pass
-    
-    def surfaceNorma(self, p1) :
-        pass
 
 ############################################################################
 # Cylindrical surface
@@ -413,7 +417,15 @@ class Mirror(PlaneSurface):
     @classmethod
     def rotate_deg(cls, placement, axis=[0, 0, 1], angle=90., **kwargs):
         return cls.rotate(placement, axis=axis, angle=angle * np.pi / 180., **kwargs)
+    
+    @classmethod
+    def target_dir(cls, placement, new_dir, **kwargs):
+        new_dir = new_dir / np.linalg.norm(new_dir)
 
+        nm2 = -(-np.squeeze(placement.orientation) + new_dir) / 2
+        nm2 = nm2 / np.linalg.norm(nm2)
+        
+        return cls(placement.offset(orientation=nm2), **kwargs)
         
         
 
@@ -422,7 +434,7 @@ class Mirror(PlaneSurface):
 ############################################################################
 # Snells' law 
 ############################################################################            
-def snell(ray,sn,material1,material2) :
+def snell(ray,sn,material1,material2, dir=1) :
     n1 = material1.n(ray.wavelength)
     n2 = material2.n(ray.wavelength)
 
@@ -432,7 +444,7 @@ def snell(ray,sn,material1,material2) :
 
     ct2 = ct2*np.sign(ct1)
     
-    d2 = nr*ray.d+np.atleast_1d(nr*ct1-ct2)[:,None]*sn
+    d2 = nr*ray.d+np.atleast_1d(nr*ct1-ct2)[:,None]*sn*dir
     r = RayBundle(ray.p1, d2, material2, ray.wavelength, ray.color,
                            cumulativePath=ray.prev_pathlength, intensities=ray.intensities)
 
