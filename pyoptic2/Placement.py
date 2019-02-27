@@ -27,7 +27,7 @@ class OffsetPlacement(Placement):
         if orientation is None:
             self._orientation = None
         else:
-            self._orientation = np.array(orientation, 'f')
+            self._orientation = np.squeeze(np.array(orientation, 'f'))
             self._orientation /= np.linalg.norm(self._orientation)
         
     @property

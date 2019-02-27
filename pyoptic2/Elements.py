@@ -406,13 +406,13 @@ class Mirror(PlaneSurface):
 
 
     @classmethod
-    def to_rotate(cls, placement, axis=[0, 0, 1], angle=np.pi / 2., **kwargs):
+    def rotate(cls, placement, axis=[0, 0, 1], angle=np.pi / 2., **kwargs):
         nm = np.dot(rotation_matrix(axis, angle / 2.), placement.orientation)
         return cls(placement.offset(orientation=nm), **kwargs)
 
     @classmethod
-    def to_rotate_deg(cls, placement, axis=[0, 0, 1], angle=90., **kwargs):
-        return cls.to_rotate(placement, axis=axis, angle=angle * np.pi / 180., **kwargs)
+    def rotate_deg(cls, placement, axis=[0, 0, 1], angle=90., **kwargs):
+        return cls.rotate(placement, axis=axis, angle=angle * np.pi / 180., **kwargs)
 
         
         

@@ -59,11 +59,12 @@ class System(list):
             
         return raybranch
     
-    def prepend(self, elements):
+    def prepend(self, elements, principle_ray=None):
         try:
             for e in elements[::-1]:
                 self.insert(0, e)
-        except AttributeError:
+                
+        except (AttributeError, TypeError):
             #single element
             self.insert(0, elements)
             

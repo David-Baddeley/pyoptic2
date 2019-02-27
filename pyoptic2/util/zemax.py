@@ -243,6 +243,9 @@ class ZMX(object):
                 
             
         return outSurfs
+    
+    def __call__(self, *args, **kwargs):
+        return self.to_pyoptic(*args, **kwargs)
         
 #keep glass database global (lets us read files with broken glass info if we have read good files first)
 glasses = {}

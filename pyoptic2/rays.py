@@ -38,8 +38,8 @@ class RayBundle :
         else:
             return lam*self.d + self.p0
         
-    def prop_place(self, lam):
-        """ returns a Placement object"""
+    def prop(self, lam):
+        """ Like propagate, but returns a Placement object"""
         
         import placement
         return placement.Placement(np.squeeze(self.propagate(lam)), np.squeeze(self.d))
