@@ -1,7 +1,4 @@
-import pylab as pl
 import numpy as np
-
-#from numpy.linalg import dot
 
 from material  import *
 from placement import *
@@ -17,7 +14,7 @@ class Volume() :
     def __init__(self,name, shape,dimension,placement,material) :
         self.name      = name
         self.shape     = shape
-        self.dimension = pl.array(dimension)
+        self.dimension = np.array(dimension)
         self.placement = placement
         self.material  = material
 
@@ -50,18 +47,18 @@ class Volume() :
                 xx = np.array([-xd, xd, xd, -xd, -xd])[:,None]
                 yy = np.array([-yd, -yd, yd, yd, -yd])[:,None]
             else:
-                x = pl.arange(-self.dimension[0], self.dimension[0] + 1e-8, self.dimension[0] / 5)
-                y = pl.arange(-self.dimension[1], self.dimension[1] + 1e-8, self.dimension[1] / 5)
-                xx, yy = pl.meshgrid(x, y)
+                x = np.arange(-self.dimension[0], self.dimension[0] + 1e-8, self.dimension[0] / 5)
+                y = np.arange(-self.dimension[1], self.dimension[1] + 1e-8, self.dimension[1] / 5)
+                xx, yy = np.meshgrid(x, y)
         else:
             if not proj is None:
-                r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, .1))
+                r = self.dimension[0] * np.sqrt(np.arange(0, 1.01, .1))
             else:
-                r = self.dimension[0] * pl.sqrt(pl.arange(0, 1.01, .1))
-            t = 2 * pl.pi * pl.arange(0, 1.01, .1)
+                r = self.dimension[0] * np.sqrt(np.arange(0, 1.01, .1))
+            t = 2 * np.pi * np.arange(0, 1.01, .1)
         
-            rr, tt = pl.meshgrid(r, t)
-            pol = rr * pl.exp(1j * tt)
+            rr, tt = np.meshgrid(r, t)
+            pol = rr * np.exp(1j * tt)
             xx = pol.real
             yy = pol.imag
             
@@ -76,7 +73,7 @@ class Volume() :
             #    N = np.array([1., 0, 0])
             #print 'oriented along z'
         #else:
-        #    N = pl.array([0, 0, 1.])
+        #    N = np.array([0, 0, 1.])
         
         if proj == 'z':
             N = np.array([0,0,1])
@@ -92,16 +89,16 @@ class Volume() :
                 N = np.array([1,0,0])
             
             
-        ax = pl.cross(N, self.placement.orientation)
-        ax = ax / pl.norm(ax)
+        ax = np.cross(N, self.placement.orientation)
+        ax = ax / np.linalg.norm(ax)
         
-        N2 = pl.cross(self.placement.orientation, ax)
-        N2 = N2/pl.norm(N2)
+        N2 = np.cross(self.placement.orientation, ax)
+        N2 = N2/np.linalg.norm(N2)
         
-        #ang = pl.arccos(pl.dot(N, self.placement.orientation))
+        #ang = np.arccos(np.dot(N, self.placement.orientation))
     
-        #ct = pl.cos(ang)
-        #st = pl.sin(ang)
+        #ct = np.cos(ang)
+        #st = np.sin(ang)
     
         #print ax, ang
         
@@ -154,17 +151,17 @@ class PlaneSurface(OpticalSurface) :
     def surface(self, proj=None) :
         xx, yy = self._surface_coordinates(proj)
             
-        zz = pl.zeros_like(xx)
+        zz = np.zeros_like(xx)
         
         return self._orientate_surface(xx, yy, zz, proj)
         
-        # N = pl.array([0,0,1.])
-        # ax = pl.cross(N, self.placement.orientation)
-        # ax = ax/pl.norm(ax)
-        # ang = pl.arccos(pl.dot(N, self.placement.orientation))
+        # N = np.array([0,0,1.])
+        # ax = np.cross(N, self.placement.orientation)
+        # ax = ax/np.linalg.norm(ax)
+        # ang = np.arccos(np.dot(N, self.placement.orientation))
         #
-        # ct = pl.cos(ang)
-        # st = pl.sin(ang)
+        # ct = np.cos(ang)
+        # st = np.sin(ang)
         #
         # #print ax, ang
         #
@@ -176,7 +173,7 @@ class PlaneSurface(OpticalSurface) :
         
 
     def intersection(self,inray) :
-#        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
+#        lam = np.linalg.dot(self.placement.location,inray.p0)/np.linalg.dot(self.placement.orientation,self.placement.location)
         lam = abs(((self.placement.location-inray.p0)*(self.placement.orientation)).sum(-1)/(inray.d* self.placement.orientation).sum(-1))
         #print 'PlaneSurface.intersection',lam
         inray.p1 = inray.propagate(lam)
@@ -202,8 +199,8 @@ class SphericalSurface(OpticalSurface) :
         xx, yy = self._surface_coordinates(proj)
         #cv = self.placement.location+self.placement.orientation*self.radcurv
         cv = self.placement.orientation*self.radcurv        
-        #zz = -pl.sign(self.radcurv)*pl.sqrt(self.radcurv**2-(xx-cv[0])**2-(yy-cv[1])**2)+cv[2]
-        zz = pl.sign(self.radcurv)*(-pl.sqrt(self.radcurv**2-xx**2-yy**2) +np.abs(self.radcurv))
+        #zz = -np.sign(self.radcurv)*np.sqrt(self.radcurv**2-(xx-cv[0])**2-(yy-cv[1])**2)+cv[2]
+        zz = np.sign(self.radcurv)*(-np.sqrt(self.radcurv**2-xx**2-yy**2) +np.abs(self.radcurv))
         #print zz.shape, zz, xx, yy
         
         #return [xx,yy,zz]
@@ -230,8 +227,8 @@ class SphericalSurface(OpticalSurface) :
         qsc = np.maximum(qs, 0)
         lamp = (-b+np.sqrt(qsc))/(2*a)
         lamn = (-b-np.sqrt(qsc))/(2*a)
-        #pd   = pl.linalg.norm(ray.propagate(lamp)-ray.p0)
-        #nd   = pl.linalg.norm(ray.propagate(lamn)-ray.p0)
+        #pd   = np.linalg.norm(ray.propagate(lamp)-ray.p0)
+        #nd   = np.linalg.norm(ray.propagate(lamn)-ray.p0)
 #            lam = min(lamp,lamn)
         
         if self.radcurv > 0 :
@@ -247,9 +244,9 @@ class SphericalSurface(OpticalSurface) :
     def surfaceNormal(self, p1) :
         cv = self.placement.location+self.placement.orientation*self.radcurv
 #        sn = p1-cv
-#        sn = -sn/pl.linalg.norm(sn)
-        sn = pl.sign(self.radcurv)*(cv-p1)
-        sn = sn/pl.linalg.norm(sn, axis=-1, keepdims=True)
+#        sn = -sn/np.linalg.norm(sn)
+        sn = np.sign(self.radcurv)*(cv-p1)
+        sn = sn/np.linalg.norm(sn, axis=-1, keepdims=True)
         return sn
 
     def __str__(self) :
@@ -281,8 +278,8 @@ class CylindricalSurface(OpticalSurface) :
         xx, yy = self._surface_coordinates(proj)
         #cv = self.placement.location+self.placement.orientation*self.radcurv
         cv = self.placement.orientation*self.radcurv        
-        #zz = -pl.sign(self.radcurv)*pl.sqrt(self.radcurv**2-(xx-cv[0])**2-(yy-cv[1])**2)+cv[2]
-        zz = -(-pl.sign(self.radcurv)*pl.sqrt(self.radcurv**2-xx**2-yy**2) +self.radcurv)
+        #zz = -np.sign(self.radcurv)*np.sqrt(self.radcurv**2-(xx-cv[0])**2-(yy-cv[1])**2)+cv[2]
+        zz = -(-np.sign(self.radcurv)*np.sqrt(self.radcurv**2-xx**2-yy**2) +self.radcurv)
         
         return self._orientate_surface(xx, yy, zz, proj)
 
@@ -307,8 +304,8 @@ class CylindricalSurface(OpticalSurface) :
         qsc = np.maximum(qs, 0)
         lamp = (-b + np.sqrt(qsc)) / (2 * a)
         lamn = (-b - np.sqrt(qsc)) / (2 * a)
-        #pd   = pl.linalg.norm(ray.propagate(lamp)-ray.p0)
-        #nd   = pl.linalg.norm(ray.propagate(lamn)-ray.p0)
+        #pd   = np.linalg.norm(ray.propagate(lamp)-ray.p0)
+        #nd   = np.linalg.norm(ray.propagate(lamn)-ray.p0)
         #            lam = min(lamp,lamn)
 
         if self.radcurv > 0:
@@ -324,10 +321,10 @@ class CylindricalSurface(OpticalSurface) :
     def surfaceNormal(self, p1) :
         cv = self.placement.location+self.placement.orientation*self.radcurv
 #        sn = p1-cv
-#        sn = -sn/pl.linalg.norm(sn)
-        sn = pl.sign(self.radcurv)*(cv-p1)
+#        sn = -sn/np.linalg.norm(sn)
+        sn = np.sign(self.radcurv)*(cv-p1)
         sn = sn - (sn*self.axiscurve).sum(-1)[:,None]*self.axiscurve
-        sn = sn/pl.linalg.norm(sn, axis=-1, keepdims=True)
+        sn = sn/np.linalg.norm(sn, axis=-1, keepdims=True)
         return sn
 
 ############################################################################
@@ -356,8 +353,8 @@ class ThinLens(Volume) :
         
     def surface(self, proj=None):
         xx, yy = self._surface_coordinates(proj)
-        #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.zeros_like(xx)
+        #zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        zz = np.zeros_like(xx)
         
         return self._orientate_surface(xx, yy, zz, proj)
 
@@ -383,19 +380,19 @@ class ThinLens(Volume) :
         #output ray will be parallel to the ray from point through origin
         r = self.placement.location - o1
         
-        d2 = r/pl.norm(r)
+        d2 = r/np.linalg.norm(r)
         
          
 #        sn = self.surfaceNormal(inray)
-#        mr = pl.norm(r)
+#        mr = np.linalg.norm(r)
 #        rhat = r/mr
-#        d1x = pl.dot(inray.d, sn)
-#        d1y = pl.dot(inray.d, rhat)
+#        d1x = np.dot(inray.d, sn)
+#        d1y = np.dot(inray.d, rhat)
 #        f = self.focalLength
-#        c = pl.sqrt(d1x**2 + d1y**2)
+#        c = np.sqrt(d1x**2 + d1y**2)
 #        mrft = mr/f - d1y/d1x
-#        d2y = -pl.sign(mrft)*c/pl.sqrt(1./mrft**2 + 1)
-#        d2x = -pl.sign(mrft)*pl.sqrt(c**2 - d2y**2)
+#        d2y = -np.sign(mrft)*c/np.sqrt(1./mrft**2 + 1)
+#        d2x = -np.sign(mrft)*np.sqrt(c**2 - d2y**2)
 #        #print d2x, d1x, 
 #        
 #        d2 = inray.d + (d2y-d1y)*rhat + (d2x-d1x)*sn
@@ -415,7 +412,7 @@ class ThinLens(Volume) :
         return outray
 
     def intersection(self,inray) :
-#        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
+#        lam = np.linalg.dot(self.placement.location,inray.p0)/np.linalg.dot(self.placement.orientation,self.placement.location)
         lam = abs(((self.placement.location-inray.p0)*(self.placement.orientation)).sum(-1)/(self.placement.orientation*inray.d).sum(-1))
         #print 'PlaneSurface.intersection',lam
         inray.p1 = inray.propagate(lam)
@@ -434,8 +431,8 @@ class ThinLensH(Volume) :
         
     def surface(self, proj=None):
         xx, yy = self._surface_coordinates(proj)
-        #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.zeros_like(xx)
+        #zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        zz = np.zeros_like(xx)
     
         return self._orientate_surface(xx, yy, zz, proj)
 
@@ -455,38 +452,38 @@ class ThinLensH(Volume) :
             
         #r = inray.p1 - self.placement.location
         #virtual 'in focus' object'
-        l = pl.dot(self.focalPoint - inray.p0, self.placement.orientation)/pl.dot(inray.d, self.placement.orientation)
+        l = np.dot(self.focalPoint - inray.p0, self.placement.orientation)/np.dot(inray.d, self.placement.orientation)
         o1 = inray.p0 + l*inray.d
     
-        #o1 = inray.p1 - inray.d*self.focalLength/pl.dot(inray.d, sn)
+        #o1 = inray.p1 - inray.d*self.focalLength/np.dot(inray.d, sn)
         
-        if pl.dot(inray.d, self.placement.orientation) <=0:   
+        if np.dot(inray.d, self.placement.orientation) <=0:   
             #output ray will be parallel to the ray from point through origin
             r = self.placement.location - o1
             
-            d2 = r/pl.norm(r)
+            d2 = r/np.linalg.norm(r)
         else:
             #find intercept with lens plane
-            l = pl.dot(self.placement.location - inray.p0, self.placement.orientation)/pl.dot(inray.d, self.placement.orientation)
+            l = np.dot(self.placement.location - inray.p0, self.placement.orientation)/np.dot(inray.d, self.placement.orientation)
             o2 = inray.p0 + l*inray.d
 
             of = o1 - (o2-self.placement.location)
 
             #ray will run from focal plane curve through of
             r = of - inray.p1
-            d2 = r/pl.norm(r)
+            d2 = r/np.linalg.norm(r)
     
          
 #        sn = self.surfaceNormal(inray)
-#        mr = pl.norm(r)
+#        mr = np.linalg.norm(r)
 #        rhat = r/mr
-#        d1x = pl.dot(inray.d, sn)
-#        d1y = pl.dot(inray.d, rhat)
+#        d1x = np.dot(inray.d, sn)
+#        d1y = np.dot(inray.d, rhat)
 #        f = self.focalLength
-#        c = pl.sqrt(d1x**2 + d1y**2)
+#        c = np.sqrt(d1x**2 + d1y**2)
 #        mrft = mr/f - d1y/d1x
-#        d2y = -pl.sign(mrft)*c/pl.sqrt(1./mrft**2 + 1)
-#        d2x = -pl.sign(mrft)*pl.sqrt(c**2 - d2y**2)
+#        d2y = -np.sign(mrft)*c/np.sqrt(1./mrft**2 + 1)
+#        d2x = -np.sign(mrft)*np.sqrt(c**2 - d2y**2)
 #        #print d2x, d1x, 
 #        
 #        d2 = inray.d + (d2y-d1y)*rhat + (d2x-d1x)*sn
@@ -506,18 +503,18 @@ class ThinLensH(Volume) :
         return outray
 
     def intersection(self,inray) :
-#        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
-        #lam = abs(pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d))
+#        lam = np.linalg.dot(self.placement.location,inray.p0)/np.linalg.dot(self.placement.orientation,self.placement.location)
+        #lam = abs(np.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/np.linalg.dot(self.placement.orientation,inray.d))
         oc = inray.p0 - self.focalPoint
-        doc = pl.dot(inray.d, oc)
-        sqterm = np.sqrt(doc*doc - pl.dot(oc, oc) + self.focalLength*self.focalLength)
+        doc = np.dot(inray.d, oc)
+        sqterm = np.sqrt(doc*doc - np.dot(oc, oc) + self.focalLength*self.focalLength)
         lam1 = -doc + sqterm
         p11 = inray.propagate(lam1)
         lam2 = -doc - sqterm
         #print 'PlaneSurface.intersection',lam
         p12 = inray.propagate(lam2)
 
-        if pl.dot(p11 - self.focalPoint, self.placement.orientation) > 0:
+        if np.dot(p11 - self.focalPoint, self.placement.orientation) > 0:
             inray.p1 = p12
         else:
             inray.p1 = p11
@@ -535,8 +532,8 @@ class Aperture(Volume) :
         
     def surface(self, proj=None) :
         xx, yy, zz = self._surface_coordinates(proj)
-        #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.zeros_like(xx)
+        #zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        zz = np.zeros_like(xx)
     
         return self._orientate_surface(xx, yy, zz, proj)
 
@@ -547,9 +544,9 @@ class Aperture(Volume) :
         self.intersection(inray)
 
         of = (inray.p1-self.placement.location)
-        #print self.radius, pl.norm(of)
+        #print self.radius, np.linalg.norm(of)
 
-        if pl.norm(of) < self.radius:        
+        if np.linalg.norm(of) < self.radius:
             outray = RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, inray.color, cumulativePath=inray.cumulativePath)
 
             # compute out going ray
@@ -558,8 +555,8 @@ class Aperture(Volume) :
             return None
 
     def intersection(self,inray) :
-#        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
-        lam = abs(pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d))
+#        lam = np.linalg.dot(self.placement.location,inray.p0)/np.linalg.dot(self.placement.orientation,self.placement.location)
+        lam = abs(np.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/np.linalg.dot(self.placement.orientation,inray.d))
         
         inray.p1 = inray.propagate(lam)
     
@@ -576,8 +573,8 @@ class AtAperture(Volume) :
         
     def surface(self, proj=None) :
         xx, yy, zz = self._surface_coordinates(proj)
-        #zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
-        zz = pl.zeros_like(xx)
+        #zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        zz = np.zeros_like(xx)
     
         return self._orientate_surface(xx, yy, zz, proj)
 
@@ -588,9 +585,9 @@ class AtAperture(Volume) :
         self.intersection(inray)
 
         of = (inray.p1-self.placement.location)
-        #print self.radius, pl.norm(of)
+        #print self.radius, np.linalg.norm(of)
 
-        if pl.norm(of) < self.radius:        
+        if np.linalg.norm(of) < self.radius:
             outray = RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, inray.color, cumulativePath=inray.cumulativePath)
 
             # compute out going ray
@@ -603,8 +600,8 @@ class AtAperture(Volume) :
             return None
 
     def intersection(self,inray) :
-#        lam = pl.linalg.dot(self.placement.location,inray.p0)/pl.linalg.dot(self.placement.orientation,self.placement.location)
-        lam = abs(pl.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/pl.linalg.dot(self.placement.orientation,inray.d))
+#        lam = np.linalg.dot(self.placement.location,inray.p0)/np.linalg.dot(self.placement.orientation,self.placement.location)
+        lam = abs(np.linalg.dot(self.placement.location-inray.p0,self.placement.orientation)/np.linalg.dot(self.placement.orientation,inray.d))
         
         inray.p1 = inray.propagate(lam)
     
@@ -619,11 +616,11 @@ def snell(ray,sn,material1,material2) :
     n2 = material2.n(ray.wavelength)
 
 #    nr = n1/n2
-#    dp  = pl.dot(ray.d,sn)
+#    dp  = np.dot(ray.d,sn)
 #    gam = ((nr*dp)**2-(n1/n2)+1)**0.5 - nr*dp
 #    # new direction
 #    d2  = ray.d*nr+gam*sn
-#    d2 = d2/pl.linalg.norm(d2)
+#    d2 = d2/np.linalg.norm(d2)
  #   r = Ray(ray.p1,d2)
     nr = n1/n2    
     ct1 = -(sn*ray.d).sum(-1)

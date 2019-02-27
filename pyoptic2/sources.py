@@ -1,4 +1,3 @@
-import pylab as pl
 import numpy as np
 
 from elements import *
@@ -10,7 +9,7 @@ class Source(Volume,list) :
         
         self.name = name
         self.placement = placement
-        self.dimension = pl.array([0.05,0.05,0.01])
+        self.dimension = np.array([0.05,0.05,0.01])
         self.material = Material(Material.refract,1.0)
         self.wavelength=wavelength
 
@@ -20,21 +19,21 @@ class Source(Volume,list) :
         return s
 
     def surface(self) :
-        x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-        y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-        xx,yy = pl.meshgrid(x,y)
-        zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        x = np.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
+        y = np.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
+        xx,yy = np.meshgrid(x,y)
+        zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
         
         return [xx,yy,zz]        
     
     def example_rays(self, d) :
         r0  = RayBundle(self.placement.location, [0, 0, 1], self.material)
-        ryp = RayBundle(self.placement.location + pl.array([0, d, 0]), [0, 0, 1], self.material)
-        rypp = RayBundle(self.placement.location + pl.array([0, d / 2, 0]), [0, 0, 1], self.material)
-        ryn = RayBundle(self.placement.location + pl.array([0, -d, 0]), [0, 0, 1], self.material)
-        rynn = RayBundle(self.placement.location + pl.array([0, -d / 2, 0]), [0, 0, 1], self.material)
-        rxp = RayBundle(self.placement.location + pl.array([d, 0, 0]), [0, 0, 1], self.material)
-        rxn = RayBundle(self.placement.location + pl.array([-d, 0, 0]), [0, 0, 1], self.material)
+        ryp = RayBundle(self.placement.location + np.array([0, d, 0]), [0, 0, 1], self.material)
+        rypp = RayBundle(self.placement.location + np.array([0, d / 2, 0]), [0, 0, 1], self.material)
+        ryn = RayBundle(self.placement.location + np.array([0, -d, 0]), [0, 0, 1], self.material)
+        rynn = RayBundle(self.placement.location + np.array([0, -d / 2, 0]), [0, 0, 1], self.material)
+        rxp = RayBundle(self.placement.location + np.array([d, 0, 0]), [0, 0, 1], self.material)
+        rxn = RayBundle(self.placement.location + np.array([-d, 0, 0]), [0, 0, 1], self.material)
         self.append(r0)
         self.append(ryp)
         self.append(rypp)
@@ -50,7 +49,7 @@ class PointSource(Source) :
         print 'Source.__init__'
         self.name = name
         self.placement = placement
-        self.dimension = pl.array([0.05,0.05,0.01])
+        self.dimension = np.array([0.05,0.05,0.01])
         self.material = Material(Material.refract,1.0)
         self.NA = NA
         self.color = color
@@ -62,10 +61,10 @@ class PointSource(Source) :
         return s
 
     def surface(self) :
-        x = pl.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
-        y = pl.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
-        xx,yy = pl.meshgrid(x,y)
-        zz = 1/self.placement.orientation[2]*(pl.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        x = np.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
+        y = np.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
+        xx,yy = np.meshgrid(x,y)
+        zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
         
         return [xx,yy,zz]
     
@@ -89,11 +88,11 @@ class PointSource(Source) :
     
     def _generate_rays(self, nph, nth, jit=False):
         d2 = self.placement.orientation
-        #d1 = pl.cross(d2, pl.array([1,0,0]))
-        d1 = pl.cross(d2, pl.array([1, 1, 1]) - d2)
-        d1 = d1 / pl.norm(d1)
-        d0 = pl.cross(d1, d2)
-        d0 = d0 / pl.norm(d0)
+        #d1 = np.cross(d2, np.array([1,0,0]))
+        d1 = np.cross(d2, np.array([1, 1, 1]) - d2)
+        d1 = d1 / np.linalg.norm(d1)
+        d0 = np.cross(d1, d2)
+        d0 = d0 / np.linalg.norm(d0)
         
         rays = []
     
@@ -136,11 +135,11 @@ class ColimatedSource(PointSource):
 
     def _generate_rays(self, nph, nth, jit=False):
         d2 = self.placement.orientation
-        #d1 = pl.cross(d2, pl.array([1,0,0]))
-        d1 = pl.cross(d2, pl.array([1, 1, 1]) - d2)
-        d1 = d1 / pl.norm(d1)
-        d0 = pl.cross(d1, d2)
-        d0 = d0 / pl.norm(d0)
+        #d1 = np.cross(d2, np.array([1,0,0]))
+        d1 = np.cross(d2, np.array([1, 1, 1]) - d2)
+        d1 = d1 / np.linalg.norm(d1)
+        d0 = np.cross(d1, d2)
+        d0 = d0 / np.linalg.norm(d0)
     
         rays = []
     
@@ -179,22 +178,22 @@ class FanSource(PointSource):
     #FIXME - does this still work?
     def example_rays(self, d, phi=0, nth=2, jit=True):
         y1 = self.NA
-        z1 = pl.sqrt(1 - y1 ** 2)
-        y2 = y1 / pl.sqrt(2)
-        z2 = pl.sqrt(1 - y2 ** 2)
+        z1 = np.sqrt(1 - y1 ** 2)
+        y2 = y1 / np.sqrt(2)
+        z2 = np.sqrt(1 - y2 ** 2)
         d2 = self.placement.orientation
-        #d1 = pl.cross(d2, pl.array([1,0,0]))
-        d1 = pl.cross(d2, pl.array([1, 1, 1]) - d2)
-        d1 = d1 / pl.norm(d1)
-        d0 = pl.cross(d1, d2)
-        d0 = d0 / pl.norm(d0)
+        #d1 = np.cross(d2, np.array([1,0,0]))
+        d1 = np.cross(d2, np.array([1, 1, 1]) - d2)
+        d1 = d1 / np.linalg.norm(d1)
+        d0 = np.cross(d1, d2)
+        d0 = d0 / np.linalg.norm(d0)
         
         def mray(theta, phi):
             r = np.exp(1j * phi)
             #print r.real, r.imag, np.cos(theta)
             dn = np.sin(theta) * r.real * d0 + np.sin(theta) * r.imag * d1 + np.cos(theta) * d2
-            #print pl.norm(dn)
-            #dn = dn/pl.norm(dn)
+            #print np.linalg.norm(dn)
+            #dn = dn/np.linalg.norm(dn)
             
             return RayBundle(self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
         
