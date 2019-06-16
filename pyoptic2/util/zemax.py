@@ -5,9 +5,7 @@ Created on Fri Apr 05 11:57:53 2013
 @author: David Baddeley
 """
 import lzw
-import urllib
 import os
-from bs4 import BeautifulSoup
 import numpy as np
 
 import read_agf
@@ -302,8 +300,12 @@ def load_thorlabs_zar(partnumber, cached=True):
         lens : pyoptic2.util.zemax.ZMX
             Zemax lens.
     """
+
+    from bs4 import BeautifulSoup
+    import requests
+
     # Where on ThorLab's website do we look for parts?
-    root = 'https://www.thorlabs.com'
+    root = 'http://www.thorlabs.com'
     extension = '/thorproduct.cfm?partnumber='
 
     # Where do we save thorlabs cached files?
@@ -316,26 +318,34 @@ def load_thorlabs_zar(partnumber, cached=True):
 
     save_file_name = save_dir + partnumber + '-Zemax.zar'
 
-    found = False
+    found = True
 
     # Check if we've already downloaded the file or if we've disabled the cache
     if (not os.path.isfile(save_file_name)) or (not cached):
 
+        found = False
+
         # Load up the part
         address = root + extension + partnumber
-        response = urllib.urlopen(address)
-        data = response.read()
-        soup = BeautifulSoup(data)
+        response = requests.get(address)
+        data = response.content
+        soup = BeautifulSoup(data, 'lxml')
 
         # Grab the Zemax file
         for link in soup('a'):
             if link.get('alt', '') == 'Zemax':
                 download_link = root + link['href']
-                urllib.urlretrieve(download_link, save_file_name)
+                # Need to add a header to get requests to work
+                headers = {'Connection': 'close'}
+                response = requests.get(download_link, allow_redirects=True, stream=True, headers=headers)
+                response.raise_for_status()
+                with open(save_file_name, 'wb') as fp:
+                    for block in response.iter_content(1024):
+                        fp.write(block)
                 found = True
         
-        if not found:
-            raise ValueError('Part not found.')
+    if not found:
+        raise ValueError('Part not found.')
 
     # Use the cache
     if cached:
