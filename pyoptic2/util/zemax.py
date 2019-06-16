@@ -5,6 +5,9 @@ Created on Fri Apr 05 11:57:53 2013
 @author: David Baddeley
 """
 import lzw
+import urllib
+import os
+from bs4 import BeautifulSoup
 import numpy as np
 
 import read_agf
@@ -283,4 +286,40 @@ def read_cached_zar(filename):
     
     return lens
     
+def load_thorlabs_zar(partnumber, cached=True):
+    # Where on ThorLab's website do we look for parts?
+    root = 'https://www.thorlabs.com'
+    extension = '/thorproduct.cfm?partnumber='
+
+    # Where do we save thorlabs cached files?
+    home = os.path.expanduser("~")
+    if not os.path.exists(home + '/.pyoptic'):
+        os.makedirs(home + '/.pyoptic')
+    if not os.path.exists(home + '/.pyoptic/thorlabs'):
+        os.makedirs(home + '/.pyoptic/thorlabs')
+    save_dir = home + '/.pyoptic/thorlabs/'
+
+    # Load up the part
+    address = root + extension + partnumber
+    response = urllib.urlopen(address)
+    data = response.read()
+    soup = BeautifulSoup(data)
+
+    # Grab the Zemax file
+    found = False
+    for link in soup('a'):
+        if link.get('alt', '') == 'Zemax':
+            download_link = root + link['href']
+            saved_file_name = save_dir + partnumber + '-Zemax.zar'
+            urllib.urlretrieve(download_link, saved_file_name)
+            found = True
     
+    if not found:
+        raise ValueError('Part not found.')
+
+    if cached:
+        lens = read_cached_zar(saved_file_name)
+    else:
+        lens = readZar(saved_file_name)[0][0]
+
+    return lens
