@@ -287,6 +287,21 @@ def read_cached_zar(filename):
     return lens
     
 def load_thorlabs_zar(partnumber, cached=True):
+    """
+    Goes to the ThorLabs website and grabs the .zar file for the specified part number.
+
+    Parameters
+    ---------- 
+        partnumber : str
+            ThorLabs part number.
+        cached : bool
+            Use cached .zar files.
+
+    Returns
+    -------
+        lens : pyoptic2.util.zemax.ZMX
+            Zemax lens.
+    """
     # Where on ThorLab's website do we look for parts?
     root = 'https://www.thorlabs.com'
     extension = '/thorproduct.cfm?partnumber='
@@ -312,7 +327,7 @@ def load_thorlabs_zar(partnumber, cached=True):
         data = response.read()
         soup = BeautifulSoup(data)
 
-        # Grab the Zemax fil
+        # Grab the Zemax file
         for link in soup('a'):
             if link.get('alt', '') == 'Zemax':
                 download_link = root + link['href']
