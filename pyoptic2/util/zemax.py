@@ -299,27 +299,33 @@ def load_thorlabs_zar(partnumber, cached=True):
         os.makedirs(home + '/.pyoptic/thorlabs')
     save_dir = home + '/.pyoptic/thorlabs/'
 
-    # Load up the part
-    address = root + extension + partnumber
-    response = urllib.urlopen(address)
-    data = response.read()
-    soup = BeautifulSoup(data)
+    save_file_name = save_dir + partnumber + '-Zemax.zar'
 
-    # Grab the Zemax file
     found = False
-    for link in soup('a'):
-        if link.get('alt', '') == 'Zemax':
-            download_link = root + link['href']
-            saved_file_name = save_dir + partnumber + '-Zemax.zar'
-            urllib.urlretrieve(download_link, saved_file_name)
-            found = True
-    
-    if not found:
-        raise ValueError('Part not found.')
 
+    # Check if we've already downloaded the file or if we've disabled the cache
+    if (not os.path.isfile(save_file_name)) or (not cached):
+
+        # Load up the part
+        address = root + extension + partnumber
+        response = urllib.urlopen(address)
+        data = response.read()
+        soup = BeautifulSoup(data)
+
+        # Grab the Zemax fil
+        for link in soup('a'):
+            if link.get('alt', '') == 'Zemax':
+                download_link = root + link['href']
+                urllib.urlretrieve(download_link, save_file_name)
+                found = True
+        
+        if not found:
+            raise ValueError('Part not found.')
+
+    # Use the cache
     if cached:
-        lens = read_cached_zar(saved_file_name)
+        lens = read_cached_zar(save_file_name)
     else:
-        lens = readZar(saved_file_name)[0][0]
+        lens = readZar(save_file_name)[0][0]
 
     return lens
