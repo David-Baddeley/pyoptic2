@@ -5,7 +5,6 @@ Created on Fri Apr 05 11:57:53 2013
 @author: David Baddeley
 """
 import lzw
-import os
 import numpy as np
 
 import read_agf
@@ -301,8 +300,9 @@ def load_thorlabs_zar(partnumber, cached=True):
             Zemax lens.
     """
 
-    from bs4 import BeautifulSoup
+    import os
     import requests
+    from bs4 import BeautifulSoup
 
     # Where on ThorLab's website do we look for parts?
     root = 'http://www.thorlabs.com'
