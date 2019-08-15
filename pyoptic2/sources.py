@@ -46,8 +46,8 @@ class Source(Element, list) :
 
 
 class PointSource(Source) :
-    def __init__(self,name,placement, NA=1.49/1.51, color=(1.0, 0, 0), wavelength=635.) :
-        print 'Source.__init__'
+    def __init__(self,name,placement, NA=1.49/1.51, color=(1.0, 0, 0), wavelength=635., **kwargs) :
+        #print 'Source.__init__'
         self.name = name
         self.placement = placement
         self.dimension = np.array([0.05,0.05,0.01])
@@ -60,6 +60,13 @@ class PointSource(Source) :
         s  = 'Source                   : '+self.name+'\n'
         s += 'Source.placement         : \n'+str(self.placement)
         return s
+    
+    def copy(self, **kwargs):
+        args = dict(self.__dict__)
+        
+        args.update(kwargs)
+        
+        return self.__class__(**args)
 
     def surface(self) :
         x = np.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)

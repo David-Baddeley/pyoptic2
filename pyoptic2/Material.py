@@ -1,5 +1,4 @@
 class Material(object):
-
     REFLECT  = 1
     REFRACT = 2
 

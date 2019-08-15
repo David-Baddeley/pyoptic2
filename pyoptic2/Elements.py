@@ -163,6 +163,16 @@ class PlaneSurface(OpticalSurface) :
         s += 'PlaneSurface.Volume      :\n' + Element.__str__(self)
         return s
 
+class ElementGroup(list):
+    def __init__(self, elements, placement):
+        list.__init__(self, elements)
+        
+        self.placement=placement
+        
+    @property
+    def location(self):
+        return self.placement.location
+
 ############################################################################
 # SphericalSurface
 ############################################################################            
@@ -194,7 +204,8 @@ class SphericalSurface(OpticalSurface) :
         
         if self.radcurv*dir > 0 :
             lam = np.minimum(lamp,lamn)
-        elif self.radcurv*dir < 0 :
+            #elif self.radcurv*dir < 0 :
+        else:
             lam = np.maximum(lamp,lamn)
             
         lam = lam*(qs >= 0)
@@ -319,27 +330,36 @@ class ThinLensH(ThinLens) :
     def propagate(self,inray) :
         # compute intersections
         self.intersection(inray)
+        
+        #print inray.d, self.placement.orientation
+
+        #print (inray.d * self.placement.orientation).sum(-1)
 
         #virtual 'in focus' object'
-        l = np.dot(self.focalPoint - inray.p0, self.placement.orientation)/np.dot(inray.d, self.placement.orientation)
-        o1 = inray.p0 + l*inray.d
+        l = ((self.focalPoint - inray.p0)*self.placement.orientation).sum(-1)/(inray.d*self.placement.orientation).sum(-1)
+        #print(l)
+        o1 = inray.propagate(l) #inray.p0 + l*inray.d
     
+        if inray.d.ndim == 2:
+            d0 = inray.d[0,:]
+        else:
+            d0 = inray.d
         
-        if np.dot(inray.d, self.placement.orientation) <=0:   
+        if (d0*self.placement.orientation).sum() <=0:
             #output ray will be parallel to the ray from point through origin
             r = self.placement.location - o1
             
-            d2 = r/np.linalg.norm(r)
+            d2 = r #(will get normalized in constructor /np.linalg.norm(r, axis=-1)
         else:
             #find intercept with lens plane
-            l = np.dot(self.placement.location - inray.p0, self.placement.orientation)/np.dot(inray.d, self.placement.orientation)
-            o2 = inray.p0 + l*inray.d
+            l = ((self.placement.location - inray.p0)*self.placement.orientation).sum(-1)/(inray.d*self.placement.orientation).sum(-1)
+            o2 = inray.propagate(l)# inray.p0 + l*inray.d
 
             of = o1 - (o2-self.placement.location)
 
             #ray will run from focal plane curve through of
             r = of - inray.p1
-            d2 = r/np.linalg.norm(r)
+            d2 = r # (will get normalized in constructor) /np.linalg.norm(r, axis=-1)
      
         
         return RayBundle(inray.p1, d2, inray.material, inray.wavelength, inray.color,
@@ -347,15 +367,20 @@ class ThinLensH(ThinLens) :
 
     def intersection(self,inray) :
         oc = inray.p0 - self.focalPoint
-        doc = np.dot(inray.d, oc)
-        sqterm = np.sqrt(doc*doc - np.dot(oc, oc) + self.focalLength*self.focalLength)
+        doc = (inray.d*oc).sum(-1) #np.dot(inray.d, oc)
+        sqterm = np.sqrt(doc*doc - (oc*oc).sum(-1) + self.focalLength*self.focalLength)
         lam1 = -doc + sqterm
         p11 = inray.propagate(lam1)
         lam2 = -doc - sqterm
         
         p12 = inray.propagate(lam2)
 
-        if np.dot(p11 - self.focalPoint, self.placement.orientation) > 0:
+        if p11.ndim == 2:
+            pt = p11[0,:].squeeze()
+        else:
+            pt = p11
+        
+        if np.dot(pt - self.focalPoint, self.placement.orientation) > 0:
             inray.p1 = p12
         else:
             inray.p1 = p11

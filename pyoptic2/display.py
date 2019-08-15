@@ -38,6 +38,11 @@ def plot_system2d(sys, sli='xz'):
         def plot_surf(s):
             sf = s.surface(proj='z')
             plt.plot(sf[1], sf[0], 'k')
+            
+    if sli == 'yx':
+        def plot_surf(s):
+            sf = s.surface(proj='z')
+            plt.plot(sf[0], sf[1], 'k')
     
     for s in sys:
         plot_surf(s)

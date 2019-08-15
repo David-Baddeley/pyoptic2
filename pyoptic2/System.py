@@ -1,4 +1,5 @@
 import sources
+from .elements import ElementGroup
 #import collections
 
 # Complete optical system
@@ -61,12 +62,25 @@ class System(list):
     
     def prepend(self, elements, principle_ray=None):
         try:
+            out_ray = None#principle_ray #FIXME
+            
             for e in elements[::-1]:
                 self.insert(0, e)
+                
+                if not out_ray is None:
+                    out_ray = e.propagate(out_ray) #TODO - fix me
+                
+            return elements, out_ray
                 
         except (AttributeError, TypeError):
             #single element
             self.insert(0, elements)
+            
+            if not principle_ray is None:
+                out_ray = elements.propagate(principle_ray)
+                return elements, out_ray
+            else:
+                return elements, None
             
     # def add(self, elements):
     #     try:
@@ -95,6 +109,9 @@ class System(list):
         except TypeError:
             #single element
             out_ray = self._add_element(elements, out_ray)
+            
+        if isinstance(elements, ElementGroup):
+            out_ray.p0 = elements.location
                 
         return elements, out_ray
     
