@@ -170,20 +170,22 @@ class OpticHolder(object):
     
         relies on the following OpenSCAD module definition:
         
-        module cutout(corners, radii, z_offset, hole_pos, hole_radius, corner_dir=[1,0]){
+        function sum(v, i = 0, r = 0) = i < len(v) ? sum(v, i + 1, r + v[i]) : r;
+        
+        module cutout(corners, radii, z_offset, hole_pos, hole_radius, corner_dir=[1,0], height=50.0){
           union(){
-            translate([0,0,z_offset])linear_extrude(50, center=false)offset(-radii)offset(radii)union(){
+            translate([0,0,z_offset])linear_extrude(height, center=false)offset(-radii)offset(radii)union(){
               polygon(corners);
-              offs = [1,1,-1,-1,1];
+              cm = sum(corners, r=[0,0])/len(corners);
               
                 for (i = [0:(len(corners) - 1)]) {
                   p = corners[i];
-                    //echo(sign(corners[i+1][0] - p[0]));
-                  pc = p + radii*corner_dir*offs[i];
+                  c_d_h = -sign((p-cm)*corner_dir)*corner_dir;
+                  pc = p + radii*c_d_h;
                   translate([pc[0], pc[1], 0]) circle(radii);};
               };
           
-            if (hole_pos != false) translate([hole_pos[0], hole_pos[1], 0]) cylinder(r=hole_radius, h=100, center=true);
+            if (hole_pos != false) translate([hole_pos[0], hole_pos[1], -90]) cylinder(r=hole_radius, h=100, center=false);
           };
         };
         
