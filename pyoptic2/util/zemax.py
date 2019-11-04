@@ -275,8 +275,12 @@ def read_cached_zar(filename):
     try:
         lens = shv[filename]
     except KeyError:
+        glasses.update(shv.get('glasses', {}))
         lens = readZar(filename)[0][0]
         shv[filename] = lens
+        
+        #cache glass info
+        shv['glasses'] = glasses
     
     shv.close()
     
@@ -326,25 +330,41 @@ def load_thorlabs_zar(partnumber, cached=True):
 
         # Load up the part
         address = root + extension + partnumber
-        response = requests.get(address)
+        print(address)
+        
+        headers = requests.utils.default_headers()
+        #print(headers)
+        headers['Connection'] = 'close'
+        headers['User-Agent'] =  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36"
+        response = requests.get(address, headers=headers)
         data = response.content
         soup = BeautifulSoup(data, 'lxml')
 
+        #if response.status_code != 200:
+        #    #print the error message
+        #    print(data)
+
         # Grab the Zemax file
         for link in soup('a'):
-            if link.get('alt', '') == 'Zemax':
+            if link.get('alt', '') in ['Zemax', 'Zemax (ZAR)']:
                 download_link = root + link['href']
                 # Need to add a header to get requests to work
-                headers = {'Connection': 'close'}
+                #headers = {'Connection': 'close'}
                 response = requests.get(download_link, allow_redirects=True, stream=True, headers=headers)
+                if response.status_code != 200:
+                    print(response.content)
+                    
                 response.raise_for_status()
                 with open(save_file_name, 'wb') as fp:
                     for block in response.iter_content(1024):
                         fp.write(block)
                 found = True
+                
+        if not found:
+            print(data)
         
     if not found:
-        raise ValueError('Part not found.')
+        raise ValueError('Part %s not found.' % partnumber)
 
     # Use the cache
     if cached:
