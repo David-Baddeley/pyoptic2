@@ -20,10 +20,16 @@ There are also a number of bug fixes and visualisation tweaks that are new in th
 Pyoptic requires a number of dependencies:
 
 * Python 2.7
-* Numpy, Scipy, Matplotlib, Matplotlib
+* Numpy, Scipy, Matplotlib
 * Mayavi2
 
 A python distribution such as Enthought Canopy, WinPython, Python(x,y), or Anaconda ought to provide all of these.
 
 After downloading and installing python & dependencies, pyoptic can be installed by executing:
 `python setup.py install` in the pyoptic base directory.
+
+### Optional packages ###
+
+These packages are needed to automatically grab Zemax files from Thorlabs:
+
+* Requests, Beautifulsoup4, Lxml
