@@ -19,7 +19,7 @@ There are also a number of bug fixes and visualisation tweaks that are new in th
 
 Pyoptic requires a number of dependencies:
 
-* Python 2.7
+* Python 2.7 or 3.6
 * Numpy, Scipy, Matplotlib
 * Mayavi2
 
