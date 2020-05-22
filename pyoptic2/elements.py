@@ -1,7 +1,7 @@
 import numpy as np
 
-import material
-from rays       import RayBundle
+from . import material
+from .rays import RayBundle
 
 SHAPE_RECT, SHAPE_CIRC = range(2)
 

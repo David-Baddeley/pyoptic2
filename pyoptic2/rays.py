@@ -41,7 +41,7 @@ class RayBundle :
     def prop(self, lam):
         """ Like propagate, but returns a Placement object"""
         
-        import placement
+        from . import placement
         return placement.Placement(np.squeeze(self.propagate(lam)), np.squeeze(self.d))
 
     def __str__(self) :

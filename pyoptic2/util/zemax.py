@@ -4,10 +4,10 @@ Created on Fri Apr 05 11:57:53 2013
 
 @author: David Baddeley
 """
-import lzw
+from . import lzw
 import numpy as np
 
-import read_agf
+from . import read_agf
 
 def decompZar(filename):
     """zemax .zar files are a series of concatenated, LZW compressed text-format
