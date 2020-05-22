@@ -1,4 +1,6 @@
-import sources
+import six
+
+from . import sources
 from .elements import ElementGroup
 #import collections
 
@@ -31,7 +33,8 @@ class System(list):
         ri = iter(source)
         try :                
             while True :
-                r = ri.next()
+                # r = ri.next()
+                r = six.next(ri)
                 raybranch = self.propagate_ray(r, startAt=startAt, source=source)
                 raytree.append(raybranch)
                 i += 1
