@@ -17,6 +17,17 @@ def plot2d(rays, sli='xz'):
             plt.plot(ra[:, 0, :].squeeze().T, ra[:, 2, :].squeeze().T, c=ray[0].color)
         elif sli == 'xy':
             plt.plot(ra[:, 1, :].squeeze().T, ra[:, 0, :].squeeze().T, c=ray[0].color)
+        else:
+            # sli is a tuple of (right, up) vectors 
+            assert len(sli)==2
+
+            right = np.array(sli[0])
+            up = np.array(sli[1])
+
+            x = (ra[:,:,:]*right[None,:,None]).sum(1).squeeze().T
+            y = (ra[:,:,:]*up[None,:,None]).sum(1).squeeze().T
+
+            plt.plot(x, y, c=ray[0].color)
     
     
     for ray in rays:
@@ -29,20 +40,35 @@ def plot_system2d(sys, sli='xz'):
             sf = s.surface(proj='y')
             plt.plot(sf[2], sf[0], 'k')
     
-    if sli == 'zx':
+    elif sli == 'zx':
         def plot_surf(s):
             sf = s.surface(proj='y')
             plt.plot(sf[0], sf[2], 'k')
     
-    if sli == 'xy':
+    elif sli == 'xy':
         def plot_surf(s):
             sf = s.surface(proj='z')
+            #print('sf.shape:', sf.shape)
             plt.plot(sf[1], sf[0], 'k')
             
-    if sli == 'yx':
+    elif sli == 'yx':
         def plot_surf(s):
             sf = s.surface(proj='z')
             plt.plot(sf[0], sf[1], 'k')
+
+    else:
+        # slice is a tuple (right, up)
+        assert len(sli) == 2
+        def plot_surf(s):
+            right = np.array(sli[0])
+            up = np.array(sli[1])
+
+            sf = s.surface(proj=(right, up))
+
+            x = (sf*right[:,None,None]).sum(0)
+            y = (sf*up[:,None,None]).sum(0)
+            plt.plot(x, y, 'k')
+
     
     for s in sys:
         plot_surf(s)

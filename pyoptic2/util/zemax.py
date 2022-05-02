@@ -4,10 +4,10 @@ Created on Fri Apr 05 11:57:53 2013
 
 @author: David Baddeley
 """
-import lzw
+from . import lzw
 import numpy as np
 
-import read_agf
+from . import read_agf
 
 def decompZar(filename):
     """zemax .zar files are a series of concatenated, LZW compressed text-format
@@ -25,38 +25,44 @@ def decompZar(filename):
     
     #sections seem to be separated by at least 4 nulls, often more
     #the length comparison deals with multiple consecutive nulls
-    sections = [s for s in raw.split('\0\0\0\0') if len(s) > 0]
+    sections = [s for s in raw.split(b'\0\0\0\0') if len(s) > 0]
     
     componentFiles = {}
     
     for i, s in enumerate(sections):
         #compressed data is preceeded by a plain-text file name
-        if s.endswith('.LZW'):
+        if s.endswith(b'.LZW'):
             #this is a filename
-            compFName = s[:-4]
+            compFName = s[:-4].decode('utf8')
             
-            compData = ''.join([c for c in lzw.decompress(sections[i+1].lstrip('\0'))])
+            #print(sections[i+1].lstrip(b'\x00'))
+            #print(lzw.decompress(sections[i+1].lstrip(b'\x00')))
+            compData = b''.join([c for c in lzw.decompress(sections[i+1].lstrip(b'\x00'))])
             
-            componentFiles[compFName] = compData
+            try:
+                componentFiles[compFName] = compData.decode('ascii', 'ignore')
+            except:
+                print(compData[25020:])
+                raise
         elif len(s) < 256:
             try: 
                 #print s
-                s = (s.lstrip('\0') + '\0').decode('utf16')
+                s = (s.lstrip(b'\x00') + b'\x00').decode('utf16')
             except:
                 s = ''
                 
             #print s.encode('ascii', 'replace')
             if s.endswith('.LZW'):
-                compFName = s[:-4]
+                compFName = s[:-4]# .decode('utf8')
         
-                compData = ''.join([c for c in lzw.decompress(sections[i+1].lstrip('\0'))])
+                compData = b''.join([c for c in lzw.decompress(sections[i+1].lstrip(b'\x00'))])
                 
                 if (len(compData) % 2):
                     #make sure we can decode as utf16
-                    compData+='\0'
+                    compData+=b'\x00'
                 compData = compData.decode('utf16').encode('ascii', 'replace')
                 
-                componentFiles[compFName] = compData
+                componentFiles[compFName] = compData.decode('ascii', 'ignore')
             
     return componentFiles
  
@@ -166,7 +172,7 @@ class ZMX(object):
         surfs = self.surfaces[1:-1]
         
         l = sum([s.disz for s in surfs[:-1]])
-        #print(l)
+        #print(placement, repr(fb), repr(f))
 
         zvs = -np.cumsum([s.disz for s in surfs[::-1]])[::-1]
         

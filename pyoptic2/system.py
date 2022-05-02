@@ -1,4 +1,4 @@
-import sources
+from . import sources
 from .elements import ElementGroup
 #import collections
 
@@ -31,7 +31,7 @@ class System(list):
         ri = iter(source)
         try :                
             while True :
-                r = ri.next()
+                r = next(ri)
                 raybranch = self.propagate_ray(r, startAt=startAt, source=source)
                 raytree.append(raybranch)
                 i += 1
@@ -110,7 +110,7 @@ class System(list):
             #single element
             out_ray = self._add_element(elements, out_ray)
             
-        if isinstance(elements, ElementGroup):
+        if isinstance(elements, ElementGroup) and not principle_ray is None:
             out_ray.p0 = elements.location
                 
         return elements, out_ray

@@ -1,7 +1,7 @@
 import numpy as np
 
-import material
-from rays       import RayBundle
+from . import material
+from .rays import RayBundle
 
 SHAPE_RECT, SHAPE_CIRC = range(2)
 
@@ -81,6 +81,12 @@ class Element(object) :
             N = np.array([0,1,0])
         elif proj == 'x':
             N = np.array([1,0,0])
+        
+        elif isinstance(proj, tuple):
+            right, up = proj
+            N = np.cross(right, up)
+            N = N/np.linalg.norm(N)
+
         else:
             N = np.array([0,0,1])
             
@@ -96,7 +102,9 @@ class Element(object) :
         N2 = N2/np.linalg.norm(N2)
         
         coords = self.placement.orientation[:,None,None]*zz[None,:, :] + ax[:,None,None]*xx[None,:,:] + N2[:,None, None]*yy[None,:,:]
-        return coords + self.placement.location[:,None, None]
+        coords = coords + self.placement.location[:,None, None]
+
+        return coords
     
        
 
@@ -145,6 +153,12 @@ class PlaneSurface(OpticalSurface) :
 
     def surface(self, proj=None) :
         xx, yy = self._surface_coordinates(proj)
+
+        #print(xx.shape)
+        xx = xx[:,-1:]
+        yy = yy[:,-1:]
+
+        #print(xx.shape)
         zz = np.zeros_like(xx)
         
         return self._orientate_surface(xx, yy, zz, proj)
@@ -471,7 +485,7 @@ def snell(ray,sn,material1,material2, dir=1) :
     
     d2 = nr*ray.d+np.atleast_1d(nr*ct1-ct2)[:,None]*sn*dir
     r = RayBundle(ray.p1, d2, material2, ray.wavelength, ray.color,
-                           cumulativePath=ray.prev_pathlength, intensities=ray.intensities)
+                           cumulativePath=ray.cumulativePath, intensities=ray.intensities)
 
     return r
     
@@ -483,7 +497,7 @@ def reflect(ray,sn) :
     
     #print d2
     r = RayBundle(ray.p1, d2, ray.material, ray.wavelength, ray.color,
-                           cumulativePath=ray.prev_pathlength, intensities=ray.intensities)
+                           cumulativePath=ray.cumulativePath, intensities=ray.intensities)
     
     #print r.d
     return r

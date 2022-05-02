@@ -392,7 +392,7 @@ class Decoder(object):
         for cp in codepoints:
             decoded = self._decode_codepoint(cp)
             for character in decoded:
-                yield character
+                yield struct.pack('B', character)
 
 
 
@@ -426,11 +426,13 @@ class Decoder(object):
         else:
             if codepoint in self._codepoints:
                 ret = self._codepoints[ codepoint ]
+                #print('\n')
+                #print(ret, self._codepoints, self._prefix)
                 if None != self._prefix:
-                    self._codepoints[ len(self._codepoints) ] = self._prefix + ret[0]
+                    self._codepoints[ len(self._codepoints) ] = self._prefix + ret[0:1]
 
             else:
-                ret = self._prefix + self._prefix[0]
+                ret = self._prefix + self._prefix[0:1]
                 self._codepoints[ len(self._codepoints) ] = ret
 
             self._prefix = ret
@@ -687,17 +689,17 @@ class PagingDecoder(object):
 
 
 # PYTHON V2
-def unpackbyte(b):
-   """
-   Given a one-byte long byte string, returns an integer. Equivalent
-   to struct.unpack("B", b)
-   """
-   (ret,) = struct.unpack("B", b)
-   return ret
+# def unpackbyte(b):
+#    """
+#    Given a one-byte long byte string, returns an integer. Equivalent
+#    to struct.unpack("B", b)
+#    """
+#    (ret,) = struct.unpack("B", b)
+#    return ret
 
 
 # PYTHON V3
-# def unpackbyte(b): return b
+def unpackbyte(b): return b
 
 
 def filebytes(fileobj, buffersize=1024):

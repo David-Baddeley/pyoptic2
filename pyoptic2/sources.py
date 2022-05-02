@@ -1,9 +1,9 @@
 import numpy as np
 
-from elements import *
-from rays import *
-from placement import *
-from material import *
+from .elements import *
+from .rays import *
+from .placement import *
+from .material import *
 
 class Source(Element, list) :
     def __init__(self,name,placement, wavelength=635.) :
@@ -117,7 +117,7 @@ class PointSource(Source) :
         
         
         for th in np.linspace(0, 1, nth)[1:]:
-            for phi in (np.linspace(0, 2 * np.pi, np.maximum(nph * th, 3))[:-1] + 3 * np.pi / 4):
+            for phi in (np.linspace(0, 2 * np.pi, int(np.maximum(nph * th, 3)))[:-1] + 3 * np.pi / 4):
                 if jit:
                     phi = phi + (np.random.rand(1) - .5) * 2 * np.pi / (nph * th)
                     thm = th + (np.random.rand(1) - .5) / nth
@@ -165,7 +165,7 @@ class ColimatedSource(PointSource):
         phis = [0]
     
         for th in np.linspace(0, 1, nth)[1:]:
-            for phi in (np.linspace(0, 2 * np.pi, np.maximum(nph * th, 3))[:-1] + 3 * np.pi / 4):
+            for phi in (np.linspace(0, 2 * np.pi, int(np.maximum(nph * th, 3)))[:-1] + 3 * np.pi / 4):
                 if jit:
                     phi = phi + (np.random.rand(1) - .5) * 2 * np.pi / (nph * th)
                     thm = th + (np.random.rand(1) - .5) / nth
