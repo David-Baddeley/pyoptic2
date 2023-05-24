@@ -34,5 +34,6 @@ def sphericalReflector():
     r = s.propagate()
     d = display3d.Display3D(s,r)
     d.Draw()
+    d.show()
 
 sphericalReflector()

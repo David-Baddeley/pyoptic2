@@ -152,7 +152,7 @@ class Display3D :
         self.f.scene.disable_render = False
         return self.f
 
-    def show():
+    def show(self):
         '''
         If running directly from the terminal show() will need to be run after Draw() so
         that the program doesn't exit immediatly.
