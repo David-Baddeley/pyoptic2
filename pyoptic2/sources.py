@@ -23,7 +23,7 @@ class Source(Element, list) :
         x = np.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
         y = np.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
         xx,yy = np.meshgrid(x,y)
-        zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        zz = 1/self.placement.orientation[2]*(np.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
         
         return [xx,yy,zz]        
     
@@ -72,7 +72,7 @@ class PointSource(Source) :
         x = np.arange(-self.dimension[0],self.dimension[0]+1e-8,self.dimension[0]/5)
         y = np.arange(-self.dimension[1],self.dimension[1]+1e-8,self.dimension[1]/5)
         xx,yy = np.meshgrid(x,y)
-        zz = 1/self.placement.orientation[2]*(np.linalg.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
+        zz = 1/self.placement.orientation[2]*(np.dot(self.placement.orientation,self.placement.location)-self.placement.orientation[0]*xx-self.placement.orientation[1]*yy)
         
         return [xx,yy,zz]
     

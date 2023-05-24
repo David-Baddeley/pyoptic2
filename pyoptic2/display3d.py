@@ -10,7 +10,9 @@ try:
     #from enthought.tvtk.tools import visual
     from enthought.tvtk.api import tvtk
     from enthought.tvtk.common import configure_input_data
-except ImportError:
+except ImportError as e:
+    print(e)
+    print('Trying txtk directly')
     #from tvtk.tools import mlab as ml2
     #from tvtk.tools import visual
     from tvtk.api import tvtk
@@ -148,6 +150,14 @@ class Display3D :
                 
         self.f.scene.background = (0.38, 0.4, 0.55)
         self.f.scene.disable_render = False
+        return self.f
+
+    def show():
+        '''
+        If running directly from the terminal show() will need to be run after Draw() so
+        that the program doesn't exit immediatly.
+        '''
+        mlab.show()
 
 def Display3DTest() :
     s = SystemTest()
