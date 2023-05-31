@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-__version__ = '0.1.0'
+__version__ = '0.9.0'
 
 from setuptools import setup, find_packages
 from os import path
@@ -35,11 +35,12 @@ if __name__ == '__main__':
           install_requires=['numpy',
                             'scipy',
                             'matplotlib',
-                            'mayavi',
-                            'lxml',
-                            'requests',
-                            'beautifulsoup4',
-                            'PyQt5==5.14'],
+                            #'mayavi',
+                            #'lxml',
+                            #'requests',
+                            #'beautifulsoup4',
+                            #'PyQt5==5.14',
+                           ],
           extras_require={'dev': ['twine']},
           python_requires=">=3.6"
     )
