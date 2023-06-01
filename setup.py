@@ -35,12 +35,13 @@ if __name__ == '__main__':
           install_requires=['numpy',
                             'scipy',
                             'matplotlib',
-                            #'mayavi',
-                            #'lxml',
-                            #'requests',
-                            #'beautifulsoup4',
-                            #'PyQt5==5.14',
                            ],
-          extras_require={'dev': ['twine']},
+          extras_require={'dev': ['twine'],
+                          '3d': ['mayavi'], # for 3D visualisation of optical layouts. Will likely also require either wx or QT (but we leave that for mayavi itself to specify)
+                          'fetch': ['lxml', 'requests', 'beautifulsoup4'], # to allow automatic download of zars for thorlabs lenses
+                          'all': ['mayavi',
+                                   'lxml',
+                                   'requests',
+                                   'beautifulsoup4']},},
           python_requires=">=3.6"
     )
