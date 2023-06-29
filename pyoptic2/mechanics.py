@@ -220,34 +220,53 @@ class OpticHolder(object):
         return 'cutout(%s, %3.2f, %3.2f, %s, %3.2f, [%3.2f, %3.2f]);\n' % (
         corners, radius, z_offset, hole_pos, self._hole_radius, right[0], right[1])
 
+class OpticHolderFactory(object):
+    def __init__(self, klass, *args, **kwargs):
+        self._klass = klass
+        self._args = args
+        self._kwargs = kwargs
+
+    def __call__(self, optic, **kwargs):
+        kwargs.update(self._kwargs)
+        return self._klass(optic, *self._args, **kwargs)
+
+
+def factoryify(klass):
+    def _factory(*args, **kwargs):
+        return OpticHolderFactory(klass, *args, **kwargs)
+    _factory.klass = klass
+
+    return _factory
+
 
 ############################
 # A few Thorlabs parts
 
+@factoryify
 class CP02T(OpticHolder):
     bbox = [-20.3, 20.3, 0, 12.7, -20.3, 20.3]
     bbox_cutout = [-20.8, 20.8, 0, 13.7, -20.3, 20.3]
     hole_pos = [0, 6.4]
     offsets = {'centre': 12.7 / 2, 'front': 2, 'back': 12.7 - 2}
     
-    def __init__(self, lens, align='centre', **kwargs):
+    def __init__(self, lens, align='front', **kwargs):
         offset = kwargs.pop('offset', 0) - self.offsets[align]
         OpticHolder.__init__(self, lens, offset=offset, **kwargs)
 
-
+@factoryify
 class KMSS(OpticHolder):
     bbox = [-12.7, 12.7, 6, 26, -15.9, 12.7]
     bbox_optic = [-12.5, 12.5, 0, 6, -12.5, 12.5]
     bbox_cutout = [-12.7, 12.7, 14.4, 22.4, -15.9, 12.7]
     hole_pos = [0, 18.8]
 
-
+@factoryify
 class GVS211(OpticHolder):
     bbox = [-14, 32, -31, 15, -16.2, 69.8]
     bbox_cutout = [-14, 33, -32, 15, -16.2, 69.8]
     hole_pos = [-(15 - 23), -(-14 + 23)]
 
-
+@factoryify
 class VA100(OpticHolder):
     bbox = [-25.4, 25.4, -6.9, 5, -17.8, 16]
     slit_bb = [-15, -1.5, -.05, .05, -5, 5]
@@ -261,7 +280,7 @@ class VA100(OpticHolder):
         x, y = self._projected_footprint(self._corners(-np.array(self.slit_bb)), proj=proj)
         plt.plot(y, x, 'k-')
 
-
+@factoryify
 class KCB1EC(OpticHolder):
     bbox = [-24.1, 24.1, -24.1, 24.1, -24.1, 24.1]
     hole_pos = [24.1 - 17.8, -24.1 + 17.8]
@@ -270,21 +289,21 @@ class KCB1EC(OpticHolder):
         from pyoptic2.elements import rotation_matrix
         up = np.array(kwargs.get('up', [0, 0, 1]))
         orientation = np.array(kwargs.pop('orientation', optic.orientation))
-        orientation = np.dot(rotation_matrix(up, pi / 4.), orientation)
+        orientation = np.dot(rotation_matrix(up, np.absolutepi / 4.), orientation)
         OpticHolder.__init__(self, optic, orientation=orientation, **kwargs)
 
-
-class DFM1(KCB1EC): #override KCB1EC to get the 45 degrees bit right
+@factoryify
+class DFM1(KCB1EC.klass): #override KCB1EC to get the 45 degrees bit right
     bbox = [-25.4, 25.4, -25.4, 25.4, -30, 30]
     hole_pos = [0, 0]
     hole_radius = 3.5
 
-
+@factoryify
 class CS2100M(OpticHolder):
     #sCMOS camera
     bbox = [-30, 30, -9.5, 53, -25, 25]
 
-
+@factoryify
 class TTL200(OpticHolder):
     bbox = [-18, 18, -18, 18, -14, 14]
     
@@ -297,7 +316,7 @@ class TTL200(OpticHolder):
         }
         """
 
-
+@factoryify
 class TEXT(OpticHolder):
     #T-Slot extrusion
     def __init__(self, position, length=100, width=40, **kwargs):
