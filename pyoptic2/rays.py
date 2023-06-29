@@ -3,7 +3,7 @@ import numpy as np
 class RayBundle :
     ''' Class describing a light ray from an initial point to a final point '''
 
-    def __init__(self, point, dir, material, wavelength=635., color=(1.0, 0, 0), cumulativePath=0, intensities=None) :
+    def __init__(self, point, dir, material, wavelength=635., color=(1.0, 0, 0), cumulativePath=0, intensities=None, stokes=None) :
         '''Construct a ray from a start point and direction dir'''
         #print "Ray:__init__>"
         
@@ -24,7 +24,8 @@ class RayBundle :
                 self.intensities = np.ones(self.d.shape[0], 'f')
         else:
             self.intensities = intensities
-         
+
+        self.stokes = stokes
         self.color = color
         
         self.prev_pathlength = cumulativePath
@@ -81,7 +82,7 @@ class RayBundle :
         # axial component of position
         p_axial = (p_*d_[None,:]).sum(axis=-1)
 
-        pl = self.prev_pathlength[1:] - self.prev_pathlength[0] - p_axial
+        pl = self.prev_pathlength[1:] - self.prev_pathlength[0] #- p_axial
 
 
         #radial component of distance from centre ray
@@ -108,7 +109,7 @@ class RayBundle :
 
         #print(pl, self.d)
 
-        return (weights*(pl/(1-1.0/(self.d[1:,:]*d_[None, :]).sum(-1)))).sum()/weights.sum()
+        return (weights*(p_axial + pl/(p_axial + 1-1.0/(self.d[1:,:]*d_[None, :]).sum(-1)))).sum()/weights.sum()
 
         #return np.mean(p2/d_radial)
         

@@ -46,12 +46,12 @@ class Source(Element, list) :
 
 
 class PointSource(Source) :
-    def __init__(self,name,placement, NA=1.49/1.51, color=(1.0, 0, 0), wavelength=635., **kwargs) :
+    def __init__(self,name,placement, NA=1.49/1.51, color=(1.0, 0, 0), wavelength=635., material= Material(Material.REFRACT, 1.0), **kwargs) :
         #print 'Source.__init__'
         self.name = name
         self.placement = placement
         self.dimension = np.array([0.05,0.05,0.01])
-        self.material = Material(Material.REFRACT, 1.0)
+        self.material = material
         self.NA = NA
         self.color = color
         self.wavelength=wavelength
@@ -108,8 +108,11 @@ class PointSource(Source) :
             r = np.exp(1j * phi)
 
             dn = (np.sin(theta) * r.real) * d0 + (np.sin(theta) * r.imag) * d1 + np.cos(theta) * d2
+
+            stokes = np.zeros((len(theta), 4))
+            stokes[:, 0] = 1 # unpolarized
         
-            return RayBundle(np.zeros_like(dn) + self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength)
+            return RayBundle(np.zeros_like(dn) + self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength, stokes=stokes)
     
         
         ths = [0]
@@ -126,7 +129,8 @@ class PointSource(Source) :
                     
                 ths.append(np.arcsin(self.NA) * thm)
                 phis.append(phi)
-                
+
+        #print(np.array(ths)*180/np.pi)        
         
         rays = [mray(np.array(ths)[:,None], np.array(phis)[:,None]), ]
                 

@@ -26,6 +26,7 @@ def decompZar(filename):
     #sections seem to be separated by at least 4 nulls, often more
     #the length comparison deals with multiple consecutive nulls
     sections = [s for s in raw.split(b'\0\0\0\0') if len(s) > 0]
+    print('detected %d sections' % len(sections))
     
     componentFiles = {}
     
@@ -165,7 +166,7 @@ class ZMX(object):
         
         return self.to_pyoptic(plc, fb, flip, f, orientation)
     
-    def to_pyoptic(self, placement, fb=None, flip = False, f = None, orientation=[0,1,0]):
+    def to_pyoptic(self, placement, fb=None, flip = False, f = None, orientation=[0,1,0], **kwargs):
         import pyoptic2 as pyo
     
         #we're only interested in real surfaces
@@ -203,7 +204,7 @@ class ZMX(object):
                 #print(i)
                 s = surfs[i]
                 
-                kwargs = dict(name=('ZMX_%d' % i),
+                surf_kwargs = dict(name=('ZMX_%d' % i),
                               shape=pyo.SHAPE_CIRC,
                               dimension=np.ones(3) * float(s.diam[0]),
                               placement= pyo.OffsetPlacement(placement, -zvs[i]),
@@ -211,13 +212,13 @@ class ZMX(object):
                 
                 if s.radius is None:
                     #planar
-                    outSurfs.append(pyo.PlaneSurface(**kwargs))
+                    outSurfs.append(pyo.PlaneSurface(**surf_kwargs))
                 elif s.type == 'TOROIDAL':
                     #cylindrical lens
                     outSurfs.append(pyo.CylindricalSurface(curvature_radius=-s.radius,
-                                                     curvature_axis=orientation, **kwargs))
+                                                     curvature_axis=orientation, **surf_kwargs))
                 else:
-                    outSurfs.append(pyo.SphericalSurface(curvature_radius=-s.radius, **kwargs))
+                    outSurfs.append(pyo.SphericalSurface(curvature_radius=-s.radius, **surf_kwargs))
                 #print((z0, s.disz))
                 z0 += self.surfaces[i].disz
             #print('z0: %f' % z0)
@@ -225,7 +226,7 @@ class ZMX(object):
             z0 = -z0 -l
             #print('z0: %f' % z0)
             for i, s in enumerate(surfs):
-                kwargs = dict(name='ZMX_%d' % i,
+                surf_kwargs = dict(name='ZMX_%d' % i,
                              shape=pyo.SHAPE_CIRC,
                              dimension=np.ones(3) * float(s.diam[0]),
                              placement= pyo.OffsetPlacement(placement, zvs[i]),
@@ -236,9 +237,9 @@ class ZMX(object):
                     outSurfs.append(pyo.PlaneSurface(**kwargs))
                 elif s.type == 'TOROIDAL':
                     outSurfs.append(pyo.CylindricalSurface(curvature_radius=s.radius,
-                                                     curvature_axis=orientation, **kwargs))
+                                                     curvature_axis=orientation, **surf_kwargs))
                 else:
-                    outSurfs.append(pyo.SphericalSurface(curvature_radius=s.radius, **kwargs))
+                    outSurfs.append(pyo.SphericalSurface(curvature_radius=s.radius, **surf_kwargs))
                     
                 #print((z0, s.disz))
                 z0 += s.disz
@@ -247,7 +248,7 @@ class ZMX(object):
                 
                 
             
-        return pyo.ElementGroup(outSurfs, placement)
+        return pyo.ElementGroup(outSurfs, placement, **kwargs)
     
     def __call__(self, *args, **kwargs):
         return self.to_pyoptic(*args, **kwargs)

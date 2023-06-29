@@ -9,12 +9,13 @@ SHAPE_RECT, SHAPE_CIRC = range(2)
 class Element(object) :
     ''' Orientable volume, base class to describe extent, material and orientation of a volume containing '''
             
-    def __init__(self, placement, material, name='', shape=SHAPE_CIRC, dimension = [12.5, 12.5, 12.5], **kwargs) :
+    def __init__(self, placement, material, name='', shape=SHAPE_CIRC, dimension = [12.5, 12.5, 12.5], holder=None, **kwargs) :
         self.name      = name
         self.shape     = shape
         self.dimension = np.array(dimension)
         self.placement = placement
         self.material  = material
+        self.holder    = holder
         
         self.material2 = kwargs.get('material2', None)
 
@@ -35,7 +36,7 @@ class Element(object) :
         return self.placement.location
     
     def _surface_coordinates(self, proj=None):
-        if False:#proj in  ['x', 'y', 'z']:
+        if proj in  ['x', 'y', 'z']:
             xx = np.linspace(-self.dimension[0], self.dimension[0])[:,None]
             yy = 0 * xx
         #elif proj == 'y':
@@ -106,6 +107,33 @@ class Element(object) :
 
         return coords
     
+    def surface_triangles(self):
+        #produce triangle meash of the surface
+        xx, yy, zz = self.surface()
+
+        #generate triangles from points arangeed on r-theta grid
+        verts = np.empty(((xx.shape[0] -1)*(xx.shape[1]-1)*6, 3), 'f4')
+        verts[0::6, 0] = xx[:-1,:-1].flatten()
+        verts[0::6, 1] = yy[:-1,:-1].flatten()
+        verts[0::6, 2] = zz[:-1,:-1].flatten()
+        verts[1::6, 0] = xx[1:,:-1].flatten()
+        verts[1::6, 1] = yy[1:,:-1].flatten()
+        verts[1::6, 2] = zz[1:,:-1].flatten()
+        verts[2::6, 0] = xx[:-1,1:].flatten()
+        verts[2::6, 1] = yy[:-1,1:].flatten()
+        verts[2::6, 2] = zz[:-1,1:].flatten()
+        verts[3::6, 0] = xx[:-1,1:].flatten()
+        verts[3::6, 1] = yy[:-1,1:].flatten()
+        verts[3::6, 2] = zz[:-1,1:].flatten()
+        verts[4::6, 0] = xx[1:,:-1].flatten()
+        verts[4::6, 1] = yy[1:,:-1].flatten()
+        verts[4::6, 2] = zz[1:,:-1].flatten()
+        verts[5::6, 0] = xx[1:,1:].flatten()
+        verts[5::6, 1] = yy[1:,1:].flatten()
+        verts[5::6, 2] = zz[1:,1:].flatten()
+
+        return verts
+    
        
 
 ############################################################################
@@ -155,8 +183,8 @@ class PlaneSurface(OpticalSurface) :
         xx, yy = self._surface_coordinates(proj)
 
         #print(xx.shape)
-        xx = xx[:,-1:]
-        yy = yy[:,-1:]
+        #xx = xx[:,-1:]
+        #yy = yy[:,-1:]
 
         #print(xx.shape)
         zz = np.zeros_like(xx)
@@ -178,10 +206,11 @@ class PlaneSurface(OpticalSurface) :
         return s
 
 class ElementGroup(list):
-    def __init__(self, elements, placement):
+    def __init__(self, elements, placement, holder=None):
         list.__init__(self, elements)
         
         self.placement=placement
+        self[0].holder = holder # assign holder to 0th element
         
     @property
     def location(self):
@@ -327,7 +356,7 @@ class ThinLens(PlaneSurface) :
     
         
         return RayBundle(inray.p1, d2, inray.material, inray.wavelength, inray.color,
-                           cumulativePath=inray.prev_pathlength, intensities=inray.intensities)
+                           cumulativePath=inray.cumulativePath, intensities=inray.intensities, stokes=inray.stokes)
 
 
 
@@ -377,7 +406,7 @@ class ThinLensH(ThinLens) :
      
         
         return RayBundle(inray.p1, d2, inray.material, inray.wavelength, inray.color,
-                           cumulativePath=inray.prev_pathlength, intensities=inray.intensities)
+                           cumulativePath=inray.cumulativePath, intensities=inray.intensities, stokes=inray.stokes)
 
     def intersection(self,inray) :
         oc = inray.p0 - self.focalPoint
@@ -418,8 +447,13 @@ class Aperture(PlaneSurface) :
 
         mask = np.linalg.norm(of, axis=-1) < self.radius
 
+        if inray.stokes is not None:
+            stokes = inray.stokes*mask[:,None]
+        else:
+            stokes = None
+
         return RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, inray.color,
-                           cumulativePath=inray.prev_pathlength, intensities=inray.intensities*mask)
+                           cumulativePath=inray.cumulativePath, intensities=inray.intensities*mask, stokes=stokes)
 
 
 
@@ -477,15 +511,57 @@ def snell(ray,sn,material1,material2, dir=1) :
     n1 = material1.n(ray.wavelength)
     n2 = material2.n(ray.wavelength)
 
-    nr = n1/n2    
+    nr = n1/n2
+    nba = n2/n1    
     ct1 = -(sn*ray.d).sum(-1)
     ct2 = np.sqrt(1-(nr**2)*(1-ct1**2))
 
     ct2 = ct2*np.sign(ct1)
     
     d2 = nr*ray.d+np.atleast_1d(nr*ct1-ct2)[:,None]*sn*dir
+
+    if ray.stokes is not None:
+        #Fresnel coefficients
+        # using formulae and notation from "BOUNDARY AND INTERFACE CONDITIONS FOR POLARIZED RADIATION TRANSPORT IN A MULTILAYER MEDIUM", RDM Garcia, 2011
+
+        # RlRl = ((ct1 - nr*ct2)/(ct1 + nr*ct2))**2
+        # RrRr = ((nr*ct1 - ct2)/(nr*ct1 + ct2))**2
+        # RlRr = ((ct1-nr*ct2)/(ct1 + nr*ct2))*((nr*ct1 - ct2)/(nr*ct1 + ct2))
+
+        TlTl = ((2*nr*ct1)/(ct1 + nr*ct2))**2 # technically TlTl*
+        TrTr = ((2*nr*ct1)/(nr*ct1 + ct2))**2
+        TlTr = ((2*nr*ct1)**2)/((ct1 + nr*ct2)*(nr*ct1 + ct2)) # technically Re(TlTr*), but Im(TlTr*) = 0 for real refractive indices
+
+        fT = (nba**3)*(ct2/ct1)
+
+        # TlTl = ((2*n1*ct1)/(n1*ct1 + n2*ct2))#**2 # technically TlTl*
+        # TrTr = ((2*n1*ct1)/(n2*ct1 + n1*ct2))#**2
+        # TlTr = ((2*n1*ct1)**2)/((n1*ct1 + n2*ct2)*(n2*ct1 + n1*ct2)) # technically Re(TlTr*), but Im(TlTr*) = 0 for real refractive indices
+
+        # fT = 1.0
+
+        #precompute sums and differences
+        Trpl = 0.5*(TlTl + TrTr)
+        Trnl = 0.5*(TlTl - TrTr)
+
+        #print(Trpl, fT)
+
+        # matrix is:
+        # Tab = fT*[[1/2(TlTl + TrTr), 1/2(TlTl - TrTr), 0, 0],[1/2(TlTl - TrTr), 1/2(TlTl + TrTr), 0, 0],[0, 0, TlTr, 0],[0, 0, 0, TlTr]]
+        
+        s_out = np.zeros_like(ray.stokes)
+        s_out[:,0] = Trpl*ray.stokes[:,0] + Trnl*ray.stokes[:,1]
+        s_out[:,1] = Trnl*ray.stokes[:,0] + Trpl*ray.stokes[:,1]
+        s_out[:,2] = TlTr*ray.stokes[:,2]
+        s_out[:,3] = TlTr*ray.stokes[:,3]
+
+        s_out = s_out*fT[:,None]
+    else:
+        s_out = None
+
+
     r = RayBundle(ray.p1, d2, material2, ray.wavelength, ray.color,
-                           cumulativePath=ray.cumulativePath, intensities=ray.intensities)
+                           cumulativePath=ray.cumulativePath, intensities=ray.intensities, stokes=s_out)
 
     return r
     
@@ -497,7 +573,7 @@ def reflect(ray,sn) :
     
     #print d2
     r = RayBundle(ray.p1, d2, ray.material, ray.wavelength, ray.color,
-                           cumulativePath=ray.cumulativePath, intensities=ray.intensities)
+                           cumulativePath=ray.cumulativePath, intensities=ray.intensities, stokes=ray.stokes) #TODO - fix stokes for non-perfect reflection
     
     #print r.d
     return r
