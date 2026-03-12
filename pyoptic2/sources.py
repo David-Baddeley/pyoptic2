@@ -94,15 +94,30 @@ class PointSource(Source) :
     def principle_ray(self):
         return RayBundle(self.placement.location, self.placement.orientation, self.material, color=self.color, wavelength=self.wavelength)
     
-    def _generate_rays(self, nph, nth, jit=False):
+    def _generate_rays(self, nph, nth, jit=False, offset=(0,0)):
+        '''
+        Generate a cone of rays with the source NA
+
+        nph: number of rays in the phi direction
+        nth: number of rays in the theta direction
+        offset: (x,y), in plane of source from centre.
+        '''
+        if np.abs(np.dot(self.placement.orientation, np.array([0,0,1]))) < 0.5:
+            # use z axis as up
+            up = np.array([0,0,1])
+        else:
+            up = np.array([0,1,0])
+            
         d2 = self.placement.orientation
-        #d1 = np.cross(d2, np.array([1,0,0]))
-        d1 = np.cross(d2, np.array([1, 1, 1]) - d2)
+        d1 = np.cross(d2, up)
+        #d1 = np.cross(d2, np.array([1, 1, 1]) - d2)
         d1 = d1 / np.linalg.norm(d1)
         d0 = np.cross(d1, d2)
         d0 = d0 / np.linalg.norm(d0)
         
         rays = []
+
+        loc  = self.placement.location + offset[0] * d0 + offset[1] * d1
     
         def mray(theta, phi):
             r = np.exp(1j * phi)
@@ -112,7 +127,7 @@ class PointSource(Source) :
             stokes = np.zeros((len(theta), 4))
             stokes[:, 0] = 1 # unpolarized
         
-            return RayBundle(np.zeros_like(dn) + self.placement.location, dn, self.material, color=self.color, wavelength=self.wavelength, stokes=stokes)
+            return RayBundle(np.zeros_like(dn) + loc, dn, self.material, color=self.color, wavelength=self.wavelength, stokes=stokes)
     
         
         ths = [0]
@@ -184,6 +199,33 @@ class ColimatedSource(PointSource):
         rays = [mray(np.array(ths)[:, None], np.array(phis)[:, None]), ]
     
         return rays
+
+class FieldSource(PointSource):
+    """
+    A square grid of point sources.
+
+    size: size (x, y) of the grid in mm
+    """
+
+    def __init__(self, name, placement, size=(10,10), **kwargs):
+        PointSource.__init__(self, name, placement, **kwargs)
+        self._source_half_size = np.array(size)/2
+
+    def field_rays(self, nph, nth, n_divs=3):
+        xp, yp = np.meshgrid(np.linspace(-self._source_half_size[0], self._source_half_size[0], n_divs),
+                        np.linspace(-self._source_half_size[0], self._source_half_size[0], n_divs))
+
+        out = []
+        for x, y in zip(xp.flatten(), yp.flatten()):
+            out.extend(self._generate_rays(nph, nth, offset=(x, y)))
+
+        return out
+    
+    def field_chief_rays(self, n_divs=3):
+        return self.field_rays(5, 2, n_divs=n_divs)
+
+    def field_pupil_rays(self, n_divs=3):
+        return self.field_rays(50, 10, n_divs=n_divs)        
 
 
 class FanSource(PointSource):

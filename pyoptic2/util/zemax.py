@@ -139,7 +139,8 @@ class Surface(object):
                 self.diam = data.split()
                 self.diameter = float(self.diam[0])
                 
-
+    def __repr__(self) -> str:
+        return 'ZemaxSurface(%s)' % self.lines
     
 class ZMX(object):
     def __init__(self, data, glasses):
@@ -193,7 +194,10 @@ class ZMX(object):
         outSurfs = []
         
         #print('z0: %f, l: %f' % (z0, l))
-        
+        s_kwargs = {}
+        if 'cylinder_axis' in kwargs:
+            s_kwargs['cylinder_axis'] = kwargs.pop('cylinder_axis')
+
         #print(zvs)
         
         if flip:
@@ -210,13 +214,20 @@ class ZMX(object):
                               placement= pyo.OffsetPlacement(placement, -zvs[i]),
                               material=self.surfaces[i].glass, material2=s.glass)
                 
+                surf_kwargs.update(s_kwargs)
+                
                 if s.radius is None:
                     #planar
                     outSurfs.append(pyo.PlaneSurface(**surf_kwargs))
                 elif s.type == 'TOROIDAL':
+                    if not np.all(np.array(s.curv[1:-1], 'f4')==0):
+                        raise NotImplementedError('non-cylindrical toroidal surfaces not supported')
                     #cylindrical lens
+                    up = np.array([0,0,1])
+                    right = np.cross(orientation, up)
+                    right = right / np.linalg.norm(right)
                     outSurfs.append(pyo.CylindricalSurface(curvature_radius=-s.radius,
-                                                     curvature_axis=orientation, **surf_kwargs))
+                                                     curvature_axis=right, **surf_kwargs))
                 else:
                     outSurfs.append(pyo.SphericalSurface(curvature_radius=-s.radius, **surf_kwargs))
                 #print((z0, s.disz))
@@ -232,12 +243,22 @@ class ZMX(object):
                              placement= pyo.OffsetPlacement(placement, zvs[i]),
                              material=s.glass, material2=self.surfaces[i+1].glass)
                 
+                surf_kwargs.update(s_kwargs)
+                
                 if s.radius is None:
                     #planar
                     outSurfs.append(pyo.PlaneSurface(**kwargs))
                 elif s.type == 'TOROIDAL':
+                    if not np.all(np.array(s.curv[1:-1], 'f4')==0):
+                        print(s, s.curv, np.array(s.curv[1:-1]))
+                        raise NotImplementedError('non-cylindrical toroidal surfaces not supported')
+                    
+                    #cylindrical lens
+                    up = np.array([0,0,1])
+                    right = np.cross(orientation, up)
+                    right = right / np.linalg.norm(right)
                     outSurfs.append(pyo.CylindricalSurface(curvature_radius=s.radius,
-                                                     curvature_axis=orientation, **surf_kwargs))
+                                                     curvature_axis=right, **surf_kwargs))
                 else:
                     outSurfs.append(pyo.SphericalSurface(curvature_radius=s.radius, **surf_kwargs))
                     

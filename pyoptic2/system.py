@@ -51,7 +51,7 @@ class System(list):
             #else:
             
             #print self[j].__class__
-            
+            #print(self, j)
             rp = self[j].propagate(raybranch[j-startAt])
                 
             if rp == None:

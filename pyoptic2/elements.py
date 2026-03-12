@@ -20,7 +20,7 @@ class Element(object) :
         self.material2 = kwargs.get('material2', None)
 
     def  __str__(self) :
-        s  = 'Volume\n'
+        s  = '%s\n' % repr(self)
         s += 'Volume.shape             : '+str(self.shape)+'\n'
         s += 'Volume.dimension         : '+str(self.dimension)+'\n'
         s += 'Volume.placement         : \n'+str(self.placement)
@@ -85,7 +85,8 @@ class Element(object) :
         
         elif isinstance(proj, tuple):
             right, up = proj
-            N = np.cross(right, up)
+            #N = np.cross(right, up)
+            N = up
             N = N/np.linalg.norm(N)
 
         else:
@@ -165,6 +166,11 @@ class OpticalSurface(Element) :
             else:
                 outray = snell(inray, sn, inray.material, self.material2, dir=1)
 
+        else: # material.Material.SCREEN
+            # just propagate the ray unmodified
+            outray = RayBundle(inray.p1, inray.d, inray.material, inray.wavelength, inray.color,
+                           cumulativePath=inray.cumulativePath, intensities=inray.intensities, stokes=inray.stokes)
+        
         return outray
         
     def intersection(self,inray) :
@@ -204,6 +210,15 @@ class PlaneSurface(OpticalSurface) :
         s  = 'PlaneSurface             : '+self.name+'\n'
         s += 'PlaneSurface.Volume      :\n' + Element.__str__(self)
         return s
+    
+class Screen(PlaneSurface):
+    """A plane surface that is used to record the rays that pass through it, but otherwise
+    does not affect the ray propagation.
+    """
+    ls=':k' # matplotlib linespec/fmt for plotting
+
+    def __init__(self, *args, **kwargs):
+        PlaneSurface.__init__(self, *args, material=material.SCREEN, shape=SHAPE_RECT, **kwargs)
 
 class ElementGroup(list):
     def __init__(self, elements, placement, holder=None):
@@ -231,8 +246,10 @@ class SphericalSurface(OpticalSurface) :
         return self._orientate_surface(xx, yy, zz, proj)
 
     def intersection(self,ray) :
+        #find a vector from current ray position to center of cutvature
         dv = ray.p0 - self.placement.orientation*self.radcurv - self.placement.location
 
+        # what direction are we propagating in ?
         dir = np.sign(np.mean((ray.d*self.orientation).sum(-1)))
 
         a = 1
@@ -252,6 +269,8 @@ class SphericalSurface(OpticalSurface) :
             lam = np.maximum(lamp,lamn)
             
         lam = lam*(qs >= 0)
+
+        #print(lam)
             
         # assign intersection
         ray.p1 = ray.propagate(lam)
@@ -276,27 +295,55 @@ class CylindricalSurface(OpticalSurface) :
     def __init__(self,*args, **kwargs) :
         Element.__init__(self, *args, **kwargs)
         self.radcurv   = kwargs['curvature_radius']
-        self.axiscurve = np.array(kwargs['curvature_axis'])
+        self.cylinder_axis = np.array(kwargs.get('cylinder_axis', [0,0,1]))
 
     def surface(self, proj=None) :
+        if proj is None:
+            proj = self._frame[1:]
+
         xx, yy = self._surface_coordinates(proj)
         #cv = self.placement.location+self.placement.orientation*self.radcurv
         cv = self.placement.orientation*self.radcurv        
         #zz = -np.sign(self.radcurv)*np.sqrt(self.radcurv**2-(xx-cv[0])**2-(yy-cv[1])**2)+cv[2]
-        zz = -(-np.sign(self.radcurv)*np.sqrt(self.radcurv**2-xx**2-yy**2) +self.radcurv)
+        zz = np.sign(self.radcurv)*(-np.sqrt(self.radcurv**2-xx**2) + np.abs(self.radcurv))
         
         return self._orientate_surface(xx, yy, zz, proj)
 
 
+    @property
+    def _frame(self):
+        N = np.array(self.cylinder_axis)
+            
+        if np.abs(np.dot(N, self.placement.orientation)) >.9:
+            #object is aligned with z axis, use x axis instead
+            N = np.array([1,0,0])
+
+        right = np.cross(N, self.placement.orientation)
+        right = right/np.linalg.norm(right)
+        up = np.cross(self.placement.orientation, right)
+        up = up/np.linalg.norm(up)
+
+        return self.placement.orientation, right, up 
+    
     def intersection(self,ray) :
-        #cv = self.placement.location+self.placement.orientation*self.radcurv
+        # what direction are we propagating in ?
+        dir = np.sign(np.mean((ray.d*self.orientation).sum(-1)))
+
+        yh, xh, zh = self._frame
+
+        #transform ray to co-ordinates centred on cylinder
         dv = ray.p0 - self.placement.orientation*self.radcurv - self.placement.location
-        #print dv.shape, self.axiscurve.shape
-        dv_ = dv - (dv*self.axiscurve).sum(-1)[:,None]*self.axiscurve
-        d_ = ray.d - (ray.d*self.axiscurve).sum(-1)[:,None]*self.axiscurve
-        a = 1
-        b = 2*(d_*dv_).sum(-1)
-        c = (dv_*dv_).sum(-1)-self.radcurv**2
+        
+        # project into frame of cylinder
+        px = (dv*xh).sum(-1)
+        py = (dv*yh).sum(-1)
+
+        dx = (ray.d*xh).sum(-1)
+        dy = (ray.d*yh).sum(-1)
+
+        a = dx**2+dy**2
+        b = 2*(px*dx+py*dy)
+        c = px**2+py**2-self.radcurv**2
 
         qs = b ** 2 - 4 * a * c
         # if qs == 0 :
@@ -312,12 +359,14 @@ class CylindricalSurface(OpticalSurface) :
         #nd   = np.linalg.norm(ray.propagate(lamn)-ray.p0)
         #            lam = min(lamp,lamn)
 
-        if self.radcurv > 0:
+        if self.radcurv*dir > 0:
             lam = np.minimum(lamp, lamn)
-        elif self.radcurv < 0:
+        else:
             lam = np.maximum(lamp, lamn)
 
         lam = lam * (qs >= 0)
+
+        print(lam)
             
             # assign intersection
         ray.p1 = ray.propagate(lam)
@@ -326,8 +375,10 @@ class CylindricalSurface(OpticalSurface) :
         cv = self.placement.location+self.placement.orientation*self.radcurv
 #        sn = p1-cv
 #        sn = -sn/np.linalg.norm(sn)
+        _, _, up = self._frame
+
         sn = np.sign(self.radcurv)*(cv-p1)
-        sn = sn - (sn*self.axiscurve).sum(-1)[:,None]*self.axiscurve
+        sn = sn - (sn*up).sum(-1)[:,None]*up
         sn = sn/np.linalg.norm(sn, axis=-1, keepdims=True)
         return sn
 

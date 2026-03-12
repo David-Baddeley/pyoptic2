@@ -21,7 +21,7 @@ class Display3D(object):
         
         for j in range(nrays):
             o.append(p3j.Line(geometry=p3j.BufferGeometry(attributes={'position': p3j.BufferAttribute(points[j,:,:].T)}),
-                              material=p3j.LineBasicMaterial(color=color)))
+                              material=p3j.LineBasicMaterial(color=color, linewidth=2)))
             
         return o
 
@@ -53,12 +53,14 @@ class Display3D(object):
 
         return n
     
-    def Draw(self, shape=(1000, 600)) :        
+    def Draw(self, shape=(1000, 600), cutouts=False, models=False):        
         # loop over optical elements
 
         elements = []
 
-        bbox = np.array([-1, 1, -1, 1, -1, 1]) # x0, x1, y0, y1, z0, z1
+        bbox = np.array([-1, 1, -1, 1, -1, 1], 'f4') # x0, x1, y0, y1, z0, z1
+
+        _seen_holders = set()
 
         for e in self.s :
             verts = e.surface_triangles()
@@ -89,6 +91,18 @@ class Display3D(object):
 
             elements.append(mesh)
 
+            if (e.holder):
+                if not e.holder in _seen_holders:
+                    _seen_holders.add(e.holder)
+
+                    h = e.holder(e)
+                    
+                    if cutouts:
+                        elements.append(h.cutout_threejs())
+
+                    if models and (h.model_mesh is not None):
+                        elements.append(h.model_mesh)
+
         #print(elements)
 
         # loop over rays
@@ -98,12 +112,12 @@ class Display3D(object):
                 ra = np.concatenate([ra, np.atleast_3d(rb[-1].p1)], 2)
                 
             if (ra.shape[0] > 1):
-                bbox[0] = min(bbox[0], np.min(ra[:,:,0]))
-                bbox[1] = max(bbox[1], np.max(ra[:,:,0]))
-                bbox[2] = min(bbox[2], np.min(ra[:,:,1]))
-                bbox[3] = max(bbox[3], np.max(ra[:,:,1]))
-                bbox[4] = min(bbox[4], np.min(ra[:,:,2]))
-                bbox[5] = max(bbox[5], np.max(ra[:,:,2]))
+                bbox[0] = min(bbox[0], np.min(ra[:,0,:]))
+                bbox[1] = max(bbox[1], np.max(ra[:,0,:]))
+                bbox[2] = min(bbox[2], np.min(ra[:,1,:]))
+                bbox[3] = max(bbox[3], np.max(ra[:,1,:]))
+                bbox[4] = min(bbox[4], np.min(ra[:,2,:]))
+                bbox[5] = max(bbox[5], np.max(ra[:,2,:]))
 
                 rdo = self._drawLines(ra, color=rb[0].color)
                 elements.extend(rdo)
@@ -122,22 +136,33 @@ class Display3D(object):
 
         box_centre = (bbox[0::2] + bbox[1::2]) / 2
 
-        c = p3j.CombinedCamera(position=tuple(box_centre + np.array([0, 0, 100])), up=[1, 0, 0], children=[key_light], 
-                            width=shape[0], height=shape[1], mode='orthographic')
-        c.up=[1, 0, 0]
-        c.right=[0, 1, 0]
-        c.position = tuple(box_centre + np.array([0, 0, 100]))
+        c = p3j.CombinedCamera(position=tuple(box_centre + np.array([0, 0, 100])), children=[key_light], 
+                            width=shape[0], height=shape[1])
+        c.up=(1.0, 0.0, 0.0)
+        c.mode='orthographic'
+        #c.right=[0, 1, 0]
+        c.position = tuple(box_centre + np.array([0, 0, 1000]))
+        c.zoom = 2.0
+        c.near = 0
         
-        c.target = tuple(box_centre)
+        #c.target = tuple(box_centre)
 
+        print(bbox)
+        #_bbox = p3j.Box3Helper(p3j.Box3(tuple(bbox[0::2]), tuple(bbox[1::2])), color='blue')
         
         s = p3j.Scene(children=elements + [c, p3j.AmbientLight(color='#777777')], background='#eeeeee')
+
+        ctr = p3j.OrbitControls(controlling=c, target=tuple(box_centre))
+
         renderer = p3j.Renderer(camera=c,
                             scene=s,
                             alpha=True,
                             clearOpacity=0,
-                            controls=[p3j.OrbitControls(controlling=c)],
+                            antialias=True,
+                            controls=[ctr],
                             width=shape[0], height=shape[1])
+        
+        ctr.exec_three_obj_method("update")
         
         return renderer
                         

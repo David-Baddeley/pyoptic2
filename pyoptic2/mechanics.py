@@ -4,6 +4,66 @@ Classes defining optomechanical components (represented by a 3D bounding box).
 
 import numpy as np
 
+
+class ModelMeshManager(object):
+    """Caches meshes for 3D models to avoid expensive re-loading."""
+
+    def __init__(self):
+        self._meshes = {}
+
+    def get_mesh(self, filename, color='red', usecache=True):
+        import pythreejs as p3j
+        return p3j.Mesh(geometry=self.get_geometry(filename, usecache),
+                    material=p3j.MeshPhongMaterial(color=color))
+        
+    def get_geometry(self, filename, usecache=True):
+        key = filename
+
+        if usecache:
+            try:
+                return self._meshes[key]
+            except KeyError:
+                pass
+        
+        self._meshes[key] = self._get_geometry(filename)
+        return self._meshes[key]
+        
+    def _occ_to_threejs(self, shape):
+        from OCC.Core.Tesselator import ShapeTesselator
+        import pythreejs as p3j
+        
+        tess = ShapeTesselator(shape)
+        tess.Compute()
+
+        v = np.array(tess.GetVerticesPositionAsTuple()).reshape(-1,3).astype('f4')
+        n = np.array(tess.GetNormalsAsTuple()).reshape(-1,3).astype('f4')
+        i = np.arange(v.shape[0], dtype='uint32')
+
+        g = p3j.BufferGeometry(attributes={'position': p3j.BufferAttribute(v), 
+                                        'index': p3j.BufferAttribute(i),
+                                        'normal': p3j.BufferAttribute(n)})
+        return g
+    
+    def _get_geometry(self, filename):
+        if filename.endswith('.stl'):
+            # try:
+            #     # use PYME to load STL files (if present)
+            #     from PYME.experimental._triangle_mesh import TriangleMesh
+            #     return TriangleMesh.from_stl(filename).to_threejs(color)
+            # except ImportError:
+            #     # fall back on OpenCascade
+            from OCC.Extend.DataExchange import read_stl_file
+            shape = read_stl_file(filename)
+            return self._occ_to_threejs(shape)
+        elif filename.endswith('.step'):
+            from OCC.Extend.DataExchange import read_step_file
+            shape = read_step_file(filename)
+            return self._occ_to_threejs(shape)
+
+
+mesh_manager = ModelMeshManager() # singleton instance of our mesh cache
+
+
 class OpticHolder(object):
     _AXES = {'x': np.array([1, 0, 0]), 'y': np.array([0, 1, 0]), 'z': np.array([0, 0, 1])}
     bbox = [-20, 20, 0, 10, -20, 20]
@@ -25,9 +85,14 @@ class OpticHolder(object):
         [0, 4, 1],
         [4, 5, 1],
     ]
+
+    model = None
+    model_offset = [0, 0, 0]
+    model_rotation = [0, 0, 0]
+    model_display_color = '#303030' # approximate black anodised aluminium
     
-    def __init__(self, optic, up=[0, 0, 1], bbox=None, offset=0, stl=None, bbox_optic=None,
-                 bbox_cutout=None, hole_pos=None, hole_radius=None, **kwargs):
+    def __init__(self, optic, up=[0, 0, 1], bbox=None, offset=0, bbox_optic=None,
+                 bbox_cutout=None, hole_pos=None, hole_radius=None,  cad_model=None,**kwargs):
         """ An Optomechanical holder for an optical element
         
         parameters:
@@ -43,7 +108,7 @@ class OpticHolder(object):
                x is orthogonal to the previous 2 directions.
         offset : a 3-tuple or a single scalar representing an offset of the optic from the (0,0,0) position of the bounding box
                  used where the optic could be referenced to different positions within the holder (e.g. lens tube or cage plates)
-        stl : Not implemented (will hopefully allow bounding box to be derived automatically from an STL of the part at some
+        cad_model : STL (or optionally STEP) file. Not implemented (will hopefully allow bounding box to be derived automatically from an STL of the part at some
               point in the future.
         bbox_optic : a bounding box for the optic. Currently used for drawing mirrors on mirror holders where the
                      representation of the element is simply a flat plane, but the actual physical optic has thickness
@@ -55,8 +120,11 @@ class OpticHolder(object):
         """
         self._optic = optic
         
-        self._stl = stl
-        if stl is not None:
+        if cad_model is not None:
+            self.model = cad_model
+        
+        
+        if False:#stl is not None:
             bbox = self._stl_bbox(stl)
         elif bbox is None:
             bbox = self.bbox
@@ -79,10 +147,16 @@ class OpticHolder(object):
         
         self._up = np.array(up)
         self._front = np.array(kwargs.get('orientation', optic.orientation))
-        self._right = np.cross(up, self._front)
+        self._right = -np.cross(up, self._front)
         self._right = self._right / np.linalg.norm(self._right)
+
+        # recompute up vector to ensure it is orthogonal to front and right
+        self._up = -np.cross(self._front, self._right)
+        self._up = self._up / np.linalg.norm(self._up)
         
         self._rmat = np.array([self._right, self._front, self._up])
+
+        self._model_mesh = None
     
     def _offset_bbox(self, bbox, offset):
         if bbox is None:
@@ -160,6 +234,43 @@ class OpticHolder(object):
         
         x, y, z = self.corners.T
         mlab.triangular_mesh(x, y, z, self._face_triangs, opacity=opacity, color=color)
+
+    def _rot_3js(self, obj):
+        from scipy.spatial.transform import Rotation
+        tx, ty, tz = Rotation.from_matrix(self._rmat.T).as_euler('XYZ')
+        obj.rotateX(tx)
+        obj.rotateY(ty)
+        obj.rotateZ(tz)
+        #obj.position = self._optic.location
+    
+    def _generate_model_mesh(self):
+        if self.model is None:
+            return None
+        else:
+            import pythreejs as p3j
+            g = p3j.Group()
+
+            m = mesh_manager.get_mesh(self.model, self.model_display_color)
+            
+            m.rotateX(self.model_rotation[0])
+            m.rotateY(self.model_rotation[1])
+            m.rotateZ(self.model_rotation[2])
+            m.position = tuple(self.model_offset)
+            g.add(m)
+            
+            g.position = tuple(self._optic.location)
+
+            self._rot_3js(g)
+
+            return g
+        
+    
+    @property
+    def model_mesh(self):
+        if self._model_mesh is None:
+            self._model_mesh = self._generate_model_mesh()
+
+        return self._model_mesh
     
     def cutout(self, plane='xy', radius=2):
         """
@@ -219,6 +330,94 @@ class OpticHolder(object):
         
         return 'cutout(%s, %3.2f, %3.2f, %s, %3.2f, [%3.2f, %3.2f]);\n' % (
         corners, radius, z_offset, hole_pos, self._hole_radius, right[0], right[1])
+    
+    def _cutout_scad(self, radius=3):
+        """
+        Generate an untranslated OpenSCAD cutout for this optic. Override this in subclasses to modify cutout shape leaving
+        cutout_v2 to do the translation and rotation.
+        """
+        x0, x1, y0, y1, z0, z1 = self.cutout_bbox
+
+        assert(radius < (y1-y0)/2.0) #make sure the radius is smaller than the y dimension of cutout
+
+        sc = 'union(){'
+        sc+= f'    translate([0,0,{z0}])linear_extrude({z1-z0}, center=False)offset({radius})\n'
+        sc+= f'    polygon([[{x0}, {y0+radius}], [{x1}, {y0 + radius}], [{x1}, {y1 -radius}], [{x0},{y1 - radius}]]);\n'
+
+        if self._hole_pos is not None:
+            sc+= f'    translate([{self._hole_pos[0]}, {self._hole_pos[1]}, {z0}]) cylinder(r={self._hole_radius}, h=150, center=true);\n'
+
+        sc+=  '};\n'
+
+        return sc
+    
+    def cutout_v2(self, radius=3):
+        """
+        Generate openSCAD code for creating cutouts in a plate to be used for positioning an optical element.
+        """
+        from scipy.spatial.transform import Rotation
+
+        xp, yp, zp = self._optic.location
+        tx, ty, tz = 180*Rotation.from_matrix(self._rmat.T).as_euler('XYZ')/np.pi
+
+        sc = f'//cutout for {self}\n'
+        sc+= f'translate([{xp},{yp},{zp}])rotate([{tx},0, 0])rotate([0,{ty}, 0])rotate([0,0,{tz}])'
+        sc+= self._cutout_scad(radius=radius)
+        return  sc
+    
+    
+    @property
+    def cutout_bbox(self):
+        return self._bbox_cutout if self._bbox_cutout is not None else self._bbox #fall back on bbox if we haven't explicitly specified a cutting bbox
+    
+    def cutout_threejs(self):
+        import pythreejs as p3j
+        from scipy.spatial.transform import Rotation
+
+        bb= np.array(self.cutout_bbox)
+        wx, wy, wz = bb[1::2] - bb[::2]
+
+        #print(self, bb)
+
+        g = p3j.Group()
+        g.add(p3j.Mesh(p3j.BoxGeometry(wx, wy, wz), 
+                       material=p3j.MeshLambertMaterial(color='red', transparent=True, opacity=0.5), 
+                       position = [bb[0] + wx/2, bb[2] + wy/2, bb[4] + wz/2]))
+        
+        if self._hole_pos is not None:
+            hp = np.zeros(3, 'f4')
+            hp[:2] = self._hole_pos
+            c = p3j.Mesh(p3j.CylinderGeometry(self._hole_radius, self._hole_radius, 200), 
+                           material=p3j.MeshLambertMaterial(color='red', transparent=True, opacity=0.25), 
+                           position = tuple(hp))
+            c.rotateX(np.pi/2)
+            g.add(c)
+        
+        g.position = tuple(self._optic.location.astype('f4'))
+
+        self._rot_3js(g)
+
+        return g
+
+
+
+def generate_scad(elements):
+    """
+    Generate openSCAD code for an optical system
+    """
+    _seen_holders = set()
+
+    scad = 'module cutouts() {\n'
+    for e in elements:
+        if (e.holder is not None):
+            if not e.holder in _seen_holders:
+                _seen_holders.add(e.holder)
+
+                h = e.holder(e)
+                scad += h.cutout_v2()
+    scad += '}\n'
+
+    return scad
 
 class OpticHolderFactory(object):
     def __init__(self, klass, *args, **kwargs):
@@ -263,7 +462,8 @@ class KMSS(OpticHolder):
 @factoryify
 class GVS211(OpticHolder):
     bbox = [-14, 32, -31, 15, -16.2, 69.8]
-    bbox_cutout = [-14, 33, -32, 15, -16.2, 69.8]
+    #bbox_cutout = [-14, 33, -32, 15, -16.2, 69.8]
+    bbox_cutout = [-33, 14, -32, 15, -16.2, 69.8]
     hole_pos = [-(15 - 23), -(-14 + 23)]
 
 @factoryify

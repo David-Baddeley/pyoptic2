@@ -1,6 +1,7 @@
 class Material(object):
     REFLECT  = 1
     REFRACT = 2
+    SCREEN = 3 #does not effect rays
 
     def __init__(self, type, data = None) :
 
@@ -92,3 +93,4 @@ class AbbeGlass(CauchyGlass):
         
 AIR = Material(Material.REFRACT, 1.0)
 MIRROR = Material(Material.REFLECT, 1.0)
+SCREEN = Material(Material.SCREEN)

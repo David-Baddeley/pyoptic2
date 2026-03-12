@@ -9,7 +9,12 @@ class RayBundle :
         
         # initial points of the ray
         self.p0 = np.array(point)
+        if self.p0.ndim == 1:
+            self.p0 = self.p0[None,:]
         self.d  = np.array(dir)
+        if self.d.ndim == 1:
+            self.d = self.d[None,:]
+            
         self.d  = self.d/np.linalg.norm(self.d, axis=-1, keepdims=True)
         
         self.material = material
