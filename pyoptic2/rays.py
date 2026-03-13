@@ -118,6 +118,66 @@ class RayBundle :
     @property
     def focus(self):
         return self._focus()
+    
+    def pupil(self, prop_to_focus=True):
+        """Calculate pupil coordinates and pathlengths for the ray bundle
+        
+        This method extracts the pupil representation of the ray bundle, optionally
+        propagating to the focal plane first. Returns Cartesian and polar coordinates 
+        in the pupil plane and the optical path length differences.
+        
+        Parameters
+        ----------
+        prop_to_focus : bool, optional
+            If True, propagate rays to the focal plane before calculating pupil parameters.
+            If False, use the current ray positions. Default is True.
+        
+        Returns
+        -------
+        kx : ndarray
+            X component of normalized angular coordinates in the pupil
+        ky : ndarray
+            Y component of normalized angular coordinates in the pupil
+        r : ndarray
+            Normalized radial coordinates in the pupil (0 to 1)
+        theta : ndarray
+            Angular coordinates in the pupil (radians)
+        pathlengths : ndarray
+            Optical path length differences in units of wavelength, mean-subtracted
+        
+        Notes
+        -----
+        This method works on a copy of the ray bundle to avoid modifying the original.
+        The pathlengths are normalized by wavelength and mean-centered.
+        The angular coordinates (kx, ky) are derived from the ray directions.
+        """
+        rs = self.copy()
+        focus = float(rs.focus)
+        
+        if prop_to_focus:
+            # Find the average distance each ray would need to propagate to reach the focal plane and propagate there.
+            # If the wavefront is spherical the individual distances will be the same for all rays, 
+            # if not, this should give us the best compromise for the ray bundle (with a few caveats if we are
+            # propagating from a flat plane, but the ray phases are appropriately shifted to still focus correctly).
+            lam = abs((((rs.p0[0,:] + focus*rs.d[0,:]) - rs.p0) * (rs.d[0,:][None,:])).sum(-1) / 
+                      (rs.d * rs.d[0,:][None,:]).sum(-1))
+            rs.p1 = rs.propagate(lam)
+        
+        # Calculate optical path lengths in units of wavelength
+        pathlengths = rs.cumulativePath / (self.wavelength * 1e-6)
+        pathlengths -= pathlengths.mean()
+        
+        # Extract pupil coordinates from ray directions
+        # Use the original ray directions (self.d, not rs.d) for angular coordinates
+        kx, ky = self.d[:, 1:].T
+        
+        kc = kx + 1j * ky
+        
+        theta = np.angle(kc)
+        r = abs(kc)
+        r = r / r.max()
+        
+        return kx, ky, r, theta, pathlengths
 
     def _focus(self, apodisation=None):
         """ Find the best compromise focus for the ray bundle, by finding the average distance 
@@ -149,6 +209,7 @@ class RayBundle :
         pl = self.prev_pathlength[1:] - self.prev_pathlength[0] #- p_axial
 
         n_current = self.material.n(self.wavelength)
+        #print(f'n_current: {n_current}')
 
         if apodisation:
             # Find the radial component to estimate the angle of the ray to the priciple ray (for apodisation if required)
@@ -166,12 +227,11 @@ class RayBundle :
         
             weights=apodisation(theta)
         else:
-            weights = np.ones_like(theta)
+            weights = np.ones(p_.shape[0])
 
-       
         # Find the (weighted) average distance each ray would need to propagate to that the difference
         # in path length to the principle ray is zero. 
-        return (weights*(p_axial + pl/(p_axial + 1-1.0/(self.d[1:,:]*d_[None, :]).sum(-1)))).sum()/n_current*weights.sum()
+        return (weights*(p_axial + pl/(p_axial + 1-1.0/(self.d[1:,:]*d_[None, :]).sum(-1)))).sum()/(n_current*weights.sum())
 
 
     
